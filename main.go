@@ -3,7 +3,9 @@ package main
 import (
 	"errors"
 	"fmt"
+	"io"
 	"net/http"
+	"net/url"
 	"os"
 	"path/filepath"
 
@@ -25,6 +27,39 @@ func serve(addr string, path string, contentType string) {
 
 	fmt.Printf("Listening on %s\n", addr)
 	http.ListenAndServe(addr, nil)
+}
+
+func generate(path string, endpoint string) {
+
+	u, err := url.Parse(endpoint)
+	if err != nil {
+		fmt.Println(err)
+		os.Exit(1)
+	}
+
+	q := u.Query()
+	q.Set("sportId", "1")
+	q.Set("startDate", "2022-04-15")
+	q.Set("endDate", "2022-04-22")
+	u.RawQuery = q.Encode()
+
+	fmt.Printf("Calling %s\n", u)
+
+	resp, err := http.Get(u.String())
+	if err != nil {
+		fmt.Println(err)
+		os.Exit(1)
+	}
+	defer resp.Body.Close()
+
+	bytes, err := io.ReadAll(resp.Body)
+	if err != nil {
+		fmt.Println(err)
+		os.Exit(1)
+	}
+
+	fmt.Printf("Writing to %s\n", path)
+	os.WriteFile(path, bytes, 0666)
 }
 
 func main() {
@@ -62,7 +97,25 @@ func main() {
 	serveCmd.Flags().StringVarP(&serveContentType, "content-type", "", "application/rss+xml", "Content-Type to serve the file as")
 	serveCmd.Flags().StringVarP(&serveAddr, "addr", "", ":8080", "Interface and port to listen on")
 
+	var generateEndpoint string
+	var generateCmd = &cobra.Command{
+		Use:   "generate [FILE]",
+		Short: "Update the RSS feed in FILE or overwrite with a new feed",
+		Args:  cobra.ExactArgs(1),
+		Run: func(cmd *cobra.Command, args []string) {
+			abspath, err := filepath.Abs(args[0])
+			if err != nil {
+				fmt.Println(err)
+				os.Exit(1)
+			}
+			generate(abspath, generateEndpoint)
+		},
+	}
+
+	generateCmd.Flags().StringVarP(&generateEndpoint, "endpoint", "", "https://statsapi.mlb.com/api/v1/schedule/games", "Endpoint to make requests to")
+
 	rootCmd.AddCommand(serveCmd)
+	rootCmd.AddCommand(generateCmd)
 
 	if err := rootCmd.Execute(); err != nil {
 		fmt.Println(err)

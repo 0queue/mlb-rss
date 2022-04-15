@@ -64,3 +64,15 @@ type Venue struct {
 	Name string
 	Link string
 }
+
+// not actually full...
+type TeamFull struct {
+	Id           int
+	Name         string
+	Link         string
+	Venue        Venue
+	Abbreviation string
+	TeamName     string
+	LocationName string
+	ShortName    string
+}

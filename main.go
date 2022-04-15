@@ -5,39 +5,42 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"html/template"
 	"io"
 	"net/http"
 	"net/url"
 	"os"
 	"path/filepath"
+	"strings"
 	"time"
 
 	"github.com/0queue/mlb-rss/mlb"
+	"github.com/0queue/mlb-rss/report"
 	"github.com/spf13/cobra"
 )
 
-//go:embed report.html.gotpl
-var tpl string
+//go:embed teams.json
+var embeddedTeamJson []byte
 
 var now time.Time = time.Now()
 
-type Report struct {
-	MyTeam    string
-	Yesterday *Yesterday
-}
+func readEmbeddedTeams() map[int]mlb.TeamFull {
+	type root struct {
+		Teams []mlb.TeamFull
+	}
+	var embeddedTeams root
+	err := json.Unmarshal(embeddedTeamJson, &embeddedTeams)
+	if err != nil {
+		fmt.Println(err)
+		os.Exit(1)
+	}
 
-type Yesterday struct {
-	Outcome        string
-	MyTeamScore    int
-	OtherTeamScore int
-}
+	teams := make(map[int]mlb.TeamFull)
+	for _, t := range embeddedTeams.Teams {
+		t := t
+		teams[t.Id] = t
+	}
 
-func DateEqual(a time.Time, b time.Time) bool {
-	ya, ma, da := a.Date()
-	yb, mb, db := b.Date()
-
-	return ya == yb && ma == mb && da == db
+	return teams
 }
 
 func serve(addr string, path string, contentType string) {
@@ -57,85 +60,25 @@ func serve(addr string, path string, contentType string) {
 	http.ListenAndServe(addr, nil)
 }
 
-func generateReport(game *mlb.Game) Report {
-
-	var yesterday *Yesterday = nil
-
-	if game != nil {
-
-		var myTeam mlb.Team
-		var otherTeam mlb.Team
-		var outcome string
-		if game.Teams.Away.Team.Id == 133 {
-			myTeam = game.Teams.Away
-			otherTeam = game.Teams.Home
-			if game.Teams.Away.IsWinner {
-				outcome = "won"
-			} else {
-				outcome = "lost"
-			}
-		} else {
-			myTeam = game.Teams.Home
-			otherTeam = game.Teams.Away
-			if game.Teams.Home.IsWinner {
-				outcome = "won"
-			} else {
-				outcome = "lost"
-			}
-		}
-
-		yesterday = &Yesterday{
-			Outcome:        outcome,
-			MyTeamScore:    myTeam.Score,
-			OtherTeamScore: otherTeam.Score,
+func findTeam(teams map[int]mlb.TeamFull, teamFragment string) mlb.TeamFull {
+	var found *mlb.TeamFull
+	for _, t := range teams {
+		t := t
+		if strings.Contains(strings.ToLower(t.Name), strings.ToLower(teamFragment)) {
+			found = &t
+			break
 		}
 	}
 
-	return Report{
-		MyTeam:    "team",
-		Yesterday: yesterday,
+	if found == nil {
+		fmt.Printf("Failed to find team with fragment '%s'\n", teamFragment)
+		os.Exit(1)
 	}
+
+	return *found
 }
 
-func process(bytes []byte) string {
-	type JsonObject map[string]any
-
-	var m mlb.Mlb
-	json.Unmarshal(bytes, &m)
-
-	yesterday := now.AddDate(0, 0, -1)
-
-	var yesterdaysGame *mlb.Game = nil
-
-	for _, date := range m.Dates {
-		for _, game := range date.Games {
-
-			if DateEqual(yesterday, game.GameDate) {
-				if game.Teams.Away.Team.Id == 133 || game.Teams.Home.Team.Id == 133 {
-					report := generateReport(&game)
-					t, err := template.New("report").Parse(tpl)
-
-					if err != nil {
-						fmt.Println(err)
-						os.Exit(1)
-					}
-
-					t.Execute(os.Stdout, report)
-				}
-				yesterdaysGame = &game
-			}
-		}
-	}
-
-	if yesterdaysGame != nil {
-		fmt.Printf("Found yesterday's game: %v\n", *yesterdaysGame)
-	}
-
-	return "" //string(s)
-}
-
-func generate(path string, endpoint string) {
-
+func getMlb(endpoint string) mlb.Mlb {
 	u, err := url.Parse(endpoint)
 	if err != nil {
 		fmt.Println(err)
@@ -144,7 +87,6 @@ func generate(path string, endpoint string) {
 
 	yesterday := now.AddDate(0, 0, -1)
 	nextWeek := now.AddDate(0, 0, 7)
-	baseballTheaterDate := yesterday.Format("20060102")
 	startDate := yesterday.Format("2006-01-02")
 	endDate := nextWeek.Format("2006-01-02")
 
@@ -153,10 +95,6 @@ func generate(path string, endpoint string) {
 	q.Set("startDate", startDate)
 	q.Set("endDate", endDate)
 	u.RawQuery = q.Encode()
-
-	fmt.Printf("Calling %s\n", u)
-
-	fmt.Printf("Yesterday's game: https://baseball.theater/games/%s\n", baseballTheaterDate)
 
 	resp, err := http.Get(u.String())
 	if err != nil {
@@ -171,7 +109,26 @@ func generate(path string, endpoint string) {
 		os.Exit(1)
 	}
 
-	fmt.Println(process(bytes))
+	var m mlb.Mlb
+	// golang was poorly designed
+	err = json.Unmarshal(bytes, &m)
+	if err != nil {
+		fmt.Println(err)
+		os.Exit(1)
+	}
+
+	return m
+}
+
+func generate(path string, endpoint string, teamFragment string) {
+
+	m := getMlb(endpoint)
+	teams := readEmbeddedTeams()
+	myTeam := findTeam(teams, teamFragment)
+	r := report.MakeReport(teams, myTeam, m, now)
+	fmt.Printf("headline: %s\n", r.Headline)
+	fmt.Printf("content: %s\n", r.Content)
+
 	//fmt.Printf("Writing to %s\n", path)
 	//os.WriteFile(path, bytes, 0666)
 }
@@ -212,6 +169,7 @@ func main() {
 	serveCmd.Flags().StringVarP(&serveAddr, "addr", "", ":8080", "Interface and port to listen on")
 
 	var generateEndpoint string
+	var generateTeamFragment string
 	var generateCmd = &cobra.Command{
 		Use:   "generate [FILE]",
 		Short: "Update the RSS feed in FILE or overwrite with a new feed",
@@ -222,11 +180,12 @@ func main() {
 				fmt.Println(err)
 				os.Exit(1)
 			}
-			generate(abspath, generateEndpoint)
+			generate(abspath, generateEndpoint, generateTeamFragment)
 		},
 	}
 
 	generateCmd.Flags().StringVarP(&generateEndpoint, "endpoint", "", "https://statsapi.mlb.com/api/v1/schedule/games", "Endpoint to make requests to")
+	generateCmd.Flags().StringVarP(&generateTeamFragment, "team", "", "orioles", "The team you root for")
 
 	rootCmd.AddCommand(serveCmd)
 	rootCmd.AddCommand(generateCmd)

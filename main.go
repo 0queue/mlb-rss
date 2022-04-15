@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -8,7 +9,9 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
+	"time"
 
+	"github.com/0queue/mlb-rss/mlb"
 	"github.com/spf13/cobra"
 )
 
@@ -29,6 +32,29 @@ func serve(addr string, path string, contentType string) {
 	http.ListenAndServe(addr, nil)
 }
 
+func process(bytes []byte) string {
+	type JsonObject map[string]any
+
+	var m mlb.Mlb
+	json.Unmarshal(bytes, &m)
+
+	for _, date := range m.Dates {
+		for _, game := range date.Games {
+			//if game.Teams.Away.Team.Id == 110 || game.Teams.Home.Team.Id == 110 {
+			fmt.Printf("Found %s vs %s on %v\n", game.Teams.Away.Team.Name, game.Teams.Home.Team.Name, game.GameDate)
+			//}
+		}
+	}
+
+	//s, err := json.MarshalIndent(m.Dates, "", "    ")
+	//if err != nil {
+	//	fmt.Println(err)
+	//	os.Exit(1)
+	//}
+
+	return "" //string(s)
+}
+
 func generate(path string, endpoint string) {
 
 	u, err := url.Parse(endpoint)
@@ -37,13 +63,22 @@ func generate(path string, endpoint string) {
 		os.Exit(1)
 	}
 
+	now := time.Now()
+	yesterday := now.AddDate(0, 0, -1)
+	nextWeek := now.AddDate(0, 0, 7)
+	baseballTheaterDate := yesterday.Format("20060102")
+	startDate := yesterday.Format("2006-01-02")
+	endDate := nextWeek.Format("2006-01-02")
+
 	q := u.Query()
 	q.Set("sportId", "1")
-	q.Set("startDate", "2022-04-15")
-	q.Set("endDate", "2022-04-22")
+	q.Set("startDate", startDate)
+	q.Set("endDate", endDate)
 	u.RawQuery = q.Encode()
 
 	fmt.Printf("Calling %s\n", u)
+
+	fmt.Printf("Yesterday's game: https://baseball.theater/games/%s\n", baseballTheaterDate)
 
 	resp, err := http.Get(u.String())
 	if err != nil {
@@ -58,8 +93,9 @@ func generate(path string, endpoint string) {
 		os.Exit(1)
 	}
 
-	fmt.Printf("Writing to %s\n", path)
-	os.WriteFile(path, bytes, 0666)
+	fmt.Println(process(bytes))
+	//fmt.Printf("Writing to %s\n", path)
+	//os.WriteFile(path, bytes, 0666)
 }
 
 func main() {
@@ -79,7 +115,7 @@ func main() {
 			}
 
 			if _, err := os.Stat(args[0]); errors.Is(err, os.ErrNotExist) {
-				return errors.New("file does not exist")
+				fmt.Printf("Warning: %s does not exist\n", args[0])
 			}
 
 			return nil

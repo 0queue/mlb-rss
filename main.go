@@ -1,9 +1,11 @@
 package main
 
 import (
+	_ "embed"
 	"encoding/json"
 	"errors"
 	"fmt"
+	"html/template"
 	"io"
 	"net/http"
 	"net/url"
@@ -14,6 +16,29 @@ import (
 	"github.com/0queue/mlb-rss/mlb"
 	"github.com/spf13/cobra"
 )
+
+//go:embed report.html.gotpl
+var tpl string
+
+var now time.Time = time.Now()
+
+type Report struct {
+	MyTeam    string
+	Yesterday *Yesterday
+}
+
+type Yesterday struct {
+	Outcome        string
+	MyTeamScore    int
+	OtherTeamScore int
+}
+
+func DateEqual(a time.Time, b time.Time) bool {
+	ya, ma, da := a.Date()
+	yb, mb, db := b.Date()
+
+	return ya == yb && ma == mb && da == db
+}
 
 func serve(addr string, path string, contentType string) {
 	http.HandleFunc("/", func(w http.ResponseWriter, req *http.Request) {
@@ -32,25 +57,79 @@ func serve(addr string, path string, contentType string) {
 	http.ListenAndServe(addr, nil)
 }
 
+func generateReport(game *mlb.Game) Report {
+
+	var yesterday *Yesterday = nil
+
+	if game != nil {
+
+		var myTeam mlb.Team
+		var otherTeam mlb.Team
+		var outcome string
+		if game.Teams.Away.Team.Id == 133 {
+			myTeam = game.Teams.Away
+			otherTeam = game.Teams.Home
+			if game.Teams.Away.IsWinner {
+				outcome = "won"
+			} else {
+				outcome = "lost"
+			}
+		} else {
+			myTeam = game.Teams.Home
+			otherTeam = game.Teams.Away
+			if game.Teams.Home.IsWinner {
+				outcome = "won"
+			} else {
+				outcome = "lost"
+			}
+		}
+
+		yesterday = &Yesterday{
+			Outcome:        outcome,
+			MyTeamScore:    myTeam.Score,
+			OtherTeamScore: otherTeam.Score,
+		}
+	}
+
+	return Report{
+		MyTeam:    "team",
+		Yesterday: yesterday,
+	}
+}
+
 func process(bytes []byte) string {
 	type JsonObject map[string]any
 
 	var m mlb.Mlb
 	json.Unmarshal(bytes, &m)
 
+	yesterday := now.AddDate(0, 0, -1)
+
+	var yesterdaysGame *mlb.Game = nil
+
 	for _, date := range m.Dates {
 		for _, game := range date.Games {
-			//if game.Teams.Away.Team.Id == 110 || game.Teams.Home.Team.Id == 110 {
-			fmt.Printf("Found %s vs %s on %v\n", game.Teams.Away.Team.Name, game.Teams.Home.Team.Name, game.GameDate)
-			//}
+
+			if DateEqual(yesterday, game.GameDate) {
+				if game.Teams.Away.Team.Id == 133 || game.Teams.Home.Team.Id == 133 {
+					report := generateReport(&game)
+					t, err := template.New("report").Parse(tpl)
+
+					if err != nil {
+						fmt.Println(err)
+						os.Exit(1)
+					}
+
+					t.Execute(os.Stdout, report)
+				}
+				yesterdaysGame = &game
+			}
 		}
 	}
 
-	//s, err := json.MarshalIndent(m.Dates, "", "    ")
-	//if err != nil {
-	//	fmt.Println(err)
-	//	os.Exit(1)
-	//}
+	if yesterdaysGame != nil {
+		fmt.Printf("Found yesterday's game: %v\n", *yesterdaysGame)
+	}
 
 	return "" //string(s)
 }
@@ -63,7 +142,6 @@ func generate(path string, endpoint string) {
 		os.Exit(1)
 	}
 
-	now := time.Now()
 	yesterday := now.AddDate(0, 0, -1)
 	nextWeek := now.AddDate(0, 0, 7)
 	baseballTheaterDate := yesterday.Format("20060102")

@@ -43,6 +43,8 @@ type Team struct {
 	LeagueRecord LeagueRecord
 	Team         TeamInfo
 	SeriesNumber int
+	Score        int
+	IsWinner     bool
 }
 
 type LeagueRecord struct {

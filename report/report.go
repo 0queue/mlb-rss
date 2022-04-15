@@ -1,6 +1,7 @@
 package report
 
 import (
+	"bytes"
 	_ "embed"
 	"fmt"
 	"html/template"
@@ -80,11 +81,51 @@ func MakeReport(teams map[int]mlb.TeamFull, myTeam mlb.TeamFull, m mlb.Mlb, toda
 		}
 	}
 
+	type upcomingInfo struct {
+		IsHome      bool
+		AgainstAbbr string
+	}
+
 	type render struct {
 		Team            mlb.TeamFull
 		BaseballTheater string
 		Yesterday       *yesterdayInfo
-		Upcoming        [8]*mlb.Game
+		UpcomingDayAbbr [8]string
+		UpcomingInfos   [8]*upcomingInfo
+		UpcomingTimes   [8]*string
+	}
+
+	var upcomingDayAbbr [8]string
+	for i := 0; i < 8; i++ {
+		upcomingDayAbbr[i] = today.AddDate(0, 0, i).Weekday().String()[:2]
+	}
+
+	var upcomingInfos [8]*upcomingInfo
+	for i := 0; i < 8; i++ {
+		g := upcoming[i]
+		if g != nil {
+
+			var against mlb.Team
+			if g.Teams.Home.Team.Id != myTeam.Id {
+				against = g.Teams.Home
+			} else {
+				against = g.Teams.Away
+			}
+
+			upcomingInfos[i] = &upcomingInfo{
+				IsHome:      g.Teams.Home.Team.Id == myTeam.Id,
+				AgainstAbbr: teams[against.Team.Id].Abbreviation,
+			}
+		}
+	}
+
+	var upcomingTimes [8]*string
+	for i := 0; i < 8; i++ {
+		g := upcoming[i]
+		if g != nil {
+			s := g.GameDate.Local().Format("15:04")
+			upcomingTimes[i] = &s
+		}
 	}
 
 	baseballTheaterDate := yesterday.Format("20060102")
@@ -93,19 +134,33 @@ func MakeReport(teams map[int]mlb.TeamFull, myTeam mlb.TeamFull, m mlb.Mlb, toda
 		Team:            myTeam,
 		BaseballTheater: fmt.Sprintf("https://baseballtheater.com/games/%s", baseballTheaterDate),
 		Yesterday:       yesterdayGameInfo,
-		Upcoming:        upcoming,
+		UpcomingDayAbbr: upcomingDayAbbr,
+		UpcomingInfos:   upcomingInfos,
+		UpcomingTimes:   upcomingTimes,
 	}
 
 	t := template.Must(template.New("content").Parse(embeddedTemplate))
 
-	err := t.Execute(os.Stdout, r)
+	var content bytes.Buffer
+	err := t.Execute(&content, r)
 	if err != nil {
 		fmt.Println(err)
 		os.Exit(1)
 	}
 
+	var headline string
+	if yesterdayGameInfo != nil {
+		if yesterdayGameInfo.WinningTeam.Team.Id == myTeam.Id {
+			headline = fmt.Sprintf("The %s win! %d to %d", myTeam.Name, yesterdayGameInfo.WinningTeam.Score, yesterdayGameInfo.LosingTeam.Score)
+		} else {
+			headline = fmt.Sprintf("The %s lose, %d to %d", myTeam.Name, yesterdayGameInfo.LosingTeam.Score, yesterdayGameInfo.WinningTeam.Score)
+		}
+	} else {
+		headline = fmt.Sprintf("Baseball report %s %s", today.Weekday().String(), today.Format("2006-01-02"))
+	}
+
 	return Report{
-		Headline: "todo",
-		Content:  "content",
+		Headline: headline,
+		Content:  content.String(),
 	}
 }

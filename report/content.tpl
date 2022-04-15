@@ -10,4 +10,33 @@
 <p>See yesterday's games at <a href="{{ .BaseballTheater }}">Baseball Theater</a></p>
 
 <strong>Upcoming</strong>
-<p>todo</p>
+
+<table>
+
+<tr>
+{{- range .UpcomingDayAbbr }}
+<th>{{ . }}</th>
+{{- end }}
+</tr>
+
+<tr>
+{{- range .UpcomingInfos }}
+{{- if . }}
+<td>{{ if not .IsHome }}@ {{ end }}{{ .AgainstAbbr }}</td>
+{{- else }}
+<td>💤</td>
+{{- end }}
+{{- end }}
+</tr>
+
+<tr>
+{{- range .UpcomingTimes }}
+{{- if . }}
+<td>{{ . }}</td>
+{{- else }}
+<td></td>
+{{- end }}
+{{- end }}
+</tr>
+
+</table>

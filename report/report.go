@@ -133,7 +133,7 @@ func MakeReport(teams map[int]mlb.TeamFull, myTeam mlb.TeamFull, m mlb.Mlb, toda
 
 	r := render{
 		Team:            myTeam,
-		BaseballTheater: fmt.Sprintf("https://baseballtheater.com/games/%s", baseballTheaterDate),
+		BaseballTheater: fmt.Sprintf("https://baseball.theater/games/%s", baseballTheaterDate),
 		Yesterday:       yesterdayGameInfo,
 		UpcomingDayAbbr: upcomingDayAbbr,
 		UpcomingInfos:   upcomingInfos,

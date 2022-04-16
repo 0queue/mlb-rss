@@ -124,15 +124,18 @@ func getMlb(endpoint string) mlb.Mlb {
 }
 
 func updateChannel(existingFeed []byte, report report.Report) []byte {
-	var channel rss.Channel
-	err := xml.Unmarshal(existingFeed, &channel)
+	var r rss.Rss
+	err := xml.Unmarshal(existingFeed, &r)
 	if err != nil {
 		// make a new feed
-		channel = rss.Channel{
-			Title:       "MLB RSS",
-			Link:        "",
-			Description: "Feed generated from statsapi.mlb.com",
-			Items:       []rss.Item{},
+		r = rss.Rss{
+			Version: "2.0",
+			Channel: rss.Channel{
+				Title:       "MLB RSS",
+				Link:        "",
+				Description: "Feed generated from statsapi.mlb.com",
+				Items:       []rss.Item{},
+			},
 		}
 	}
 
@@ -146,19 +149,19 @@ func updateChannel(existingFeed []byte, report report.Report) []byte {
 		PubDate: time.Now().Format(time.RFC822),
 	}
 
-	channel.Items = append(channel.Items, newItem)
-	if len(channel.Items) > 3 {
-		startIdx := len(channel.Items) - 3
-		channel.Items = channel.Items[startIdx:]
+	r.Channel.Items = append(r.Channel.Items, newItem)
+	if len(r.Channel.Items) > 3 {
+		startIdx := len(r.Channel.Items) - 3
+		r.Channel.Items = r.Channel.Items[startIdx:]
 	}
 
-	bytes, err := xml.MarshalIndent(channel, "", "  ")
+	bytes, err := xml.MarshalIndent(r, "", "  ")
 	if err != nil {
 		fmt.Println(err)
 		os.Exit(1)
 	}
 
-	return bytes
+	return []byte(xml.Header + string(bytes))
 }
 
 func generate(path string, endpoint string, teamFragment string) {

@@ -3,6 +3,7 @@ package main
 import (
 	_ "embed"
 	"encoding/json"
+	"encoding/xml"
 	"errors"
 	"fmt"
 	"io"
@@ -15,6 +16,8 @@ import (
 
 	"github.com/0queue/mlb-rss/mlb"
 	"github.com/0queue/mlb-rss/report"
+	"github.com/0queue/mlb-rss/rss"
+	"github.com/google/uuid"
 	"github.com/spf13/cobra"
 )
 
@@ -120,17 +123,59 @@ func getMlb(endpoint string) mlb.Mlb {
 	return m
 }
 
+func updateChannel(existingFeed []byte, report report.Report) []byte {
+	var channel rss.Channel
+	err := xml.Unmarshal(existingFeed, &channel)
+	if err != nil {
+		// make a new feed
+		channel = rss.Channel{
+			Title:       "MLB RSS",
+			Link:        "",
+			Description: "Feed generated from statsapi.mlb.com",
+			Items:       []rss.Item{},
+		}
+	}
+
+	newItem := rss.Item{
+		Title: report.Headline,
+		Link:  report.Link,
+		Description: &rss.Description{
+			Text: report.Content,
+		},
+		Guid:    uuid.New().String(),
+		PubDate: time.Now().Format(time.RFC822),
+	}
+
+	channel.Items = append(channel.Items, newItem)
+	if len(channel.Items) > 3 {
+		startIdx := len(channel.Items) - 3
+		channel.Items = channel.Items[startIdx:]
+	}
+
+	bytes, err := xml.MarshalIndent(channel, "", "  ")
+	if err != nil {
+		fmt.Println(err)
+		os.Exit(1)
+	}
+
+	return bytes
+}
+
 func generate(path string, endpoint string, teamFragment string) {
 
 	m := getMlb(endpoint)
 	teams := readEmbeddedTeams()
 	myTeam := findTeam(teams, teamFragment)
 	r := report.MakeReport(teams, myTeam, m, now)
-	fmt.Printf("headline: %s\n", r.Headline)
-	fmt.Printf("content: %s\n", r.Content)
 
-	//fmt.Printf("Writing to %s\n", path)
-	//os.WriteFile(path, bytes, 0666)
+	bytes, err := os.ReadFile(path)
+	if err != nil {
+		fmt.Printf("Overwriting %s\n", path)
+	}
+
+	newChannel := updateChannel(bytes, r)
+
+	os.WriteFile(path, newChannel, 0666)
 }
 
 func main() {

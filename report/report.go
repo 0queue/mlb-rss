@@ -16,6 +16,7 @@ var embeddedTemplate string
 
 type Report struct {
 	Headline string
+	Link     string
 	Content  string
 }
 
@@ -161,6 +162,7 @@ func MakeReport(teams map[int]mlb.TeamFull, myTeam mlb.TeamFull, m mlb.Mlb, toda
 
 	return Report{
 		Headline: headline,
+		Link:     r.BaseballTheater,
 		Content:  content.String(),
 	}
 }

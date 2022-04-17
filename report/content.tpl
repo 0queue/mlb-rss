@@ -40,3 +40,5 @@
 </tr>
 
 </table>
+
+<p style="font-size: small; text-align: right;">TZ={{ .UpcomingTimezone }}</p>

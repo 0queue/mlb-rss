@@ -88,12 +88,13 @@ func MakeReport(teams map[int]mlb.TeamFull, myTeam mlb.TeamFull, m mlb.Mlb, toda
 	}
 
 	type render struct {
-		Team            mlb.TeamFull
-		BaseballTheater string
-		Yesterday       *yesterdayInfo
-		UpcomingDayAbbr [8]string
-		UpcomingInfos   [8]*upcomingInfo
-		UpcomingTimes   [8]*string
+		Team             mlb.TeamFull
+		BaseballTheater  string
+		Yesterday        *yesterdayInfo
+		UpcomingDayAbbr  [8]string
+		UpcomingInfos    [8]*upcomingInfo
+		UpcomingTimes    [8]*string
+		UpcomingTimezone string
 	}
 
 	var upcomingDayAbbr [8]string
@@ -131,13 +132,16 @@ func MakeReport(teams map[int]mlb.TeamFull, myTeam mlb.TeamFull, m mlb.Mlb, toda
 
 	baseballTheaterDate := yesterday.Format("20060102")
 
+	upcomingTimezone, _ := today.Local().Zone()
+
 	r := render{
-		Team:            myTeam,
-		BaseballTheater: fmt.Sprintf("https://baseball.theater/games/%s", baseballTheaterDate),
-		Yesterday:       yesterdayGameInfo,
-		UpcomingDayAbbr: upcomingDayAbbr,
-		UpcomingInfos:   upcomingInfos,
-		UpcomingTimes:   upcomingTimes,
+		Team:             myTeam,
+		BaseballTheater:  fmt.Sprintf("https://baseball.theater/games/%s", baseballTheaterDate),
+		Yesterday:        yesterdayGameInfo,
+		UpcomingDayAbbr:  upcomingDayAbbr,
+		UpcomingInfos:    upcomingInfos,
+		UpcomingTimes:    upcomingTimes,
+		UpcomingTimezone: upcomingTimezone,
 	}
 
 	t := template.Must(template.New("content").Parse(embeddedTemplate))

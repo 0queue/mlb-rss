@@ -17,10 +17,14 @@ $ go install # or build I guess
 or
 
 ```
-$ docker built -t mlb-rss .
+$ docker build -t mlb-rss .
 ```
 
 for a container (scratch + binary + certificates)
+
+> Note: the containerized binary will need timezone information
+        to generate proper local times.  Suggest mounting `/etc/timezone`
+        as readonly or setting the `TZ` environment variable appropriately
 
 ## Usage
 

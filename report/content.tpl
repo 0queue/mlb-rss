@@ -1,9 +1,13 @@
 <strong>Yesterday</strong>
-{{- if not .Yesterday }}
-<p>The {{ .Team.Name }} did not play yesterday</p>
-{{ else }}
-{{with .Yesterday}}
+{{- if .Postpone }}
+<p>The game was postponed due to {{ .Postpone.Reason }} at {{ .Postpone.Where }}</p>
+{{- else }}
+{{- if .Yesterday }}
+{{with .Yesterday }}
 <p>The {{ .WinningTeam.Team.Name }} ({{ .WinningTeam.LeagueRecord.Wins }}-{{ .WinningTeam.LeagueRecord.Losses }}) beat the {{ .LosingTeam.Team.Name }} ({{ .LosingTeam.LeagueRecord.Wins }}-{{ .LosingTeam.LeagueRecord.Losses }}) {{ .WinningTeam.Score }} to {{ .LosingTeam.Score }} {{ .Where }}</p>
+{{- else }}
+<p>The {{ .Team.Name }} did not play yesterday</p>
+{{- end }}
 {{- end }}
 {{- end }}
 

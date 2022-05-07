@@ -59,26 +59,38 @@ func MakeReport(teams map[int]mlb.TeamFull, myTeam mlb.TeamFull, m mlb.Mlb, toda
 		LosingTeam  mlb.Team
 	}
 
+	type postponeInfo struct {
+		Where  string
+		Reason string
+	}
+
 	var yesterdayGameInfo *yesterdayInfo
+	var yesterdayPostponeInfo *postponeInfo
 	if yesterdaysGame != nil {
-
-		var winningTeam mlb.Team
-		var losingTeam mlb.Team
-		var where string
-		if yesterdaysGame.Teams.Away.IsWinner {
-			where = "on the road"
-			winningTeam = yesterdaysGame.Teams.Away
-			losingTeam = yesterdaysGame.Teams.Home
+		if yesterdaysGame.Status.DetailedState == "Postponed" {
+			yesterdayPostponeInfo = &postponeInfo{
+				Where:  yesterdaysGame.Venue.Name,
+				Reason: yesterdaysGame.Status.Reason,
+			}
 		} else {
-			where = "at home"
-			winningTeam = yesterdaysGame.Teams.Home
-			losingTeam = yesterdaysGame.Teams.Away
-		}
+			var winningTeam mlb.Team
+			var losingTeam mlb.Team
+			var where string
+			if yesterdaysGame.Teams.Away.IsWinner {
+				where = "on the road"
+				winningTeam = yesterdaysGame.Teams.Away
+				losingTeam = yesterdaysGame.Teams.Home
+			} else {
+				where = "at home"
+				winningTeam = yesterdaysGame.Teams.Home
+				losingTeam = yesterdaysGame.Teams.Away
+			}
 
-		yesterdayGameInfo = &yesterdayInfo{
-			Where:       where,
-			WinningTeam: winningTeam,
-			LosingTeam:  losingTeam,
+			yesterdayGameInfo = &yesterdayInfo{
+				Where:       where,
+				WinningTeam: winningTeam,
+				LosingTeam:  losingTeam,
+			}
 		}
 	}
 
@@ -91,6 +103,7 @@ func MakeReport(teams map[int]mlb.TeamFull, myTeam mlb.TeamFull, m mlb.Mlb, toda
 		Team             mlb.TeamFull
 		BaseballTheater  string
 		Yesterday        *yesterdayInfo
+		Postpone         *postponeInfo
 		UpcomingDayAbbr  [8]string
 		UpcomingInfos    [8]*upcomingInfo
 		UpcomingTimes    [8]*string
@@ -138,6 +151,7 @@ func MakeReport(teams map[int]mlb.TeamFull, myTeam mlb.TeamFull, m mlb.Mlb, toda
 		Team:             myTeam,
 		BaseballTheater:  fmt.Sprintf("https://baseball.theater/games/%s", baseballTheaterDate),
 		Yesterday:        yesterdayGameInfo,
+		Postpone:         yesterdayPostponeInfo,
 		UpcomingDayAbbr:  upcomingDayAbbr,
 		UpcomingInfos:    upcomingInfos,
 		UpcomingTimes:    upcomingTimes,
@@ -154,7 +168,9 @@ func MakeReport(teams map[int]mlb.TeamFull, myTeam mlb.TeamFull, m mlb.Mlb, toda
 	}
 
 	var headline string
-	if yesterdayGameInfo != nil {
+	if yesterdayPostponeInfo != nil {
+		headline = fmt.Sprintf("Game was postponed due to %s", yesterdayPostponeInfo.Reason)
+	} else if yesterdayGameInfo != nil {
 		if yesterdayGameInfo.WinningTeam.Team.Id == myTeam.Id {
 			headline = fmt.Sprintf("The %s win! %d to %d", myTeam.Name, yesterdayGameInfo.WinningTeam.Score, yesterdayGameInfo.LosingTeam.Score)
 		} else {

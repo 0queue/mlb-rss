@@ -32,6 +32,7 @@ type Status struct {
 	CodedGameState string
 	DetailedState  string
 	StartTimeTBD   bool
+	Reason         string
 }
 
 type Teams struct {

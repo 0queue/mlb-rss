@@ -11,7 +11,7 @@ import (
 	"github.com/0queue/mlb-rss/mlb"
 )
 
-//go:embed content.tpl
+//go:embed content.gohtml
 var embeddedTemplate string
 
 type Report struct {
@@ -26,6 +26,33 @@ func daysBetween(a time.Time, b time.Time) int {
 
 func involvesTeam(g mlb.Game, teamId int) bool {
 	return g.Teams.Away.Team.Id == teamId || g.Teams.Home.Team.Id == teamId
+}
+
+type upcomingInfo struct {
+	IsHome      bool
+	AgainstAbbr string
+}
+
+type postponeInfo struct {
+	Where  string
+	Reason string
+}
+
+type yesterdayInfo struct {
+	Where       string
+	WinningTeam mlb.Team
+	LosingTeam  mlb.Team
+}
+
+type render struct {
+	Team             mlb.TeamFull
+	BaseballTheater  string
+	Yesterday        *yesterdayInfo
+	Postpone         *postponeInfo
+	UpcomingDayAbbr  [8]string
+	UpcomingInfos    [8]*upcomingInfo
+	UpcomingTimes    [8]*string
+	UpcomingTimezone string
 }
 
 func MakeReport(teams map[int]mlb.TeamFull, myTeam mlb.TeamFull, m mlb.Mlb, today time.Time) Report {
@@ -52,17 +79,6 @@ func MakeReport(teams map[int]mlb.TeamFull, myTeam mlb.TeamFull, m mlb.Mlb, toda
 	}
 
 	// generate renderable info
-
-	type yesterdayInfo struct {
-		Where       string
-		WinningTeam mlb.Team
-		LosingTeam  mlb.Team
-	}
-
-	type postponeInfo struct {
-		Where  string
-		Reason string
-	}
 
 	var yesterdayGameInfo *yesterdayInfo
 	var yesterdayPostponeInfo *postponeInfo
@@ -92,22 +108,6 @@ func MakeReport(teams map[int]mlb.TeamFull, myTeam mlb.TeamFull, m mlb.Mlb, toda
 				LosingTeam:  losingTeam,
 			}
 		}
-	}
-
-	type upcomingInfo struct {
-		IsHome      bool
-		AgainstAbbr string
-	}
-
-	type render struct {
-		Team             mlb.TeamFull
-		BaseballTheater  string
-		Yesterday        *yesterdayInfo
-		Postpone         *postponeInfo
-		UpcomingDayAbbr  [8]string
-		UpcomingInfos    [8]*upcomingInfo
-		UpcomingTimes    [8]*string
-		UpcomingTimezone string
 	}
 
 	var upcomingDayAbbr [8]string

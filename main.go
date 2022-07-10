@@ -132,7 +132,7 @@ func updateChannel(existingFeed []byte, report report.Report) []byte {
 			Version: "2.0",
 			Channel: rss.Channel{
 				Title:       "MLB RSS",
-				Link:        "",
+				Link:        "https://baseball.theater",
 				Description: "Feed generated from statsapi.mlb.com",
 				Items:       []rss.Item{},
 			},

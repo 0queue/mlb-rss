@@ -24,8 +24,6 @@ import (
 //go:embed teams.json
 var embeddedTeamJson []byte
 
-var now time.Time = time.Now()
-
 func readEmbeddedTeams() map[int]mlb.TeamFull {
 	type root struct {
 		Teams []mlb.TeamFull
@@ -81,15 +79,15 @@ func findTeam(teams map[int]mlb.TeamFull, teamFragment string) mlb.TeamFull {
 	return *found
 }
 
-func getMlb(endpoint string) mlb.Mlb {
+func getMlb(endpoint string, when time.Time) mlb.Mlb {
 	u, err := url.Parse(endpoint)
 	if err != nil {
 		fmt.Println(err)
 		os.Exit(1)
 	}
 
-	yesterday := now.AddDate(0, 0, -1)
-	nextWeek := now.AddDate(0, 0, 7)
+	yesterday := when.AddDate(0, 0, -1)
+	nextWeek := when.AddDate(0, 0, 7)
 	startDate := yesterday.Format("2006-01-02")
 	endDate := nextWeek.Format("2006-01-02")
 
@@ -164,12 +162,12 @@ func updateChannel(existingFeed []byte, report report.Report) []byte {
 	return []byte(xml.Header + string(bytes))
 }
 
-func generate(path string, endpoint string, teamFragment string) {
+func generate(path string, endpoint string, teamFragment string, when time.Time) {
 
-	m := getMlb(endpoint)
+	m := getMlb(endpoint, when)
 	teams := readEmbeddedTeams()
 	myTeam := findTeam(teams, teamFragment)
-	r := report.MakeReport(teams, myTeam, m, now)
+	r := report.MakeReport(teams, myTeam, m, when)
 
 	bytes, err := os.ReadFile(path)
 	if err != nil {
@@ -218,6 +216,7 @@ func main() {
 
 	var generateEndpoint string
 	var generateTeamFragment string
+	var generateTime string
 	var generateCmd = &cobra.Command{
 		Use:   "generate [FILE]",
 		Short: "Update the RSS feed in FILE or overwrite with a new feed",
@@ -228,12 +227,25 @@ func main() {
 				fmt.Println(err)
 				os.Exit(1)
 			}
-			generate(abspath, generateEndpoint, generateTeamFragment)
+
+			var when time.Time
+			if generateTime == "now" {
+				when = time.Now()
+			} else {
+				parsed, err := time.Parse(time.RFC3339, generateTime)
+				if err != nil {
+					panic(err)
+				}
+				when = parsed
+			}
+
+			generate(abspath, generateEndpoint, generateTeamFragment, when)
 		},
 	}
 
 	generateCmd.Flags().StringVarP(&generateEndpoint, "endpoint", "", "https://statsapi.mlb.com/api/v1/schedule/games", "Endpoint to make requests to")
 	generateCmd.Flags().StringVarP(&generateTeamFragment, "team", "", "orioles", "The team you root for")
+	generateCmd.Flags().StringVarP(&generateTime, "at-time", "", "now", "an RFC3339 timestamp to use when generating, or 'now' for the current time")
 
 	rootCmd.AddCommand(serveCmd)
 	rootCmd.AddCommand(generateCmd)

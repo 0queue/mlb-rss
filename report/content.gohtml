@@ -14,9 +14,9 @@
         {{- if .YesterdayInfo }}
             {{with .YesterdayInfo}}
                 <p>The {{ .WinningTeam.Team.Name }} ({{ .WinningTeam.LeagueRecord.Wins }}
-                    -{{ .WinningTeam.LeagueRecord.Losses }}) beat the {{ .LosingTeam.Team.Name }}
-                    ({{ .LosingTeam.LeagueRecord.Wins }}-{{ .LosingTeam.LeagueRecord.Losses }}) {{ .WinningTeam.Score }}
-                    to {{ .LosingTeam.Score }} {{ .Where }}</p>
+                    - {{ .WinningTeam.LeagueRecord.Losses }}) beat the {{ .LosingTeam.Team.Name }}
+                    ({{ .LosingTeam.LeagueRecord.Wins }} - {{ .LosingTeam.LeagueRecord.Losses }})
+                    {{ .WinningTeam.Score }} to {{ .LosingTeam.Score }} {{ .Where }}.</p>
             {{end}}
         {{- end}}
 
@@ -34,10 +34,9 @@
             {{- if .YesterdayInfo }}
                 {{with .YesterdayInfo}}
                     <p>Game {{ inc $i }}: The {{ .WinningTeam }} ({{ .WinningTeam.LeagueRecord.Wins }}
-                        -{{ .WinningTeam.LeagueRecord.Losses }}) beat the {{ .LosingTeam.Team.Name }}
-                        ({{ .LosingTeam.LeagueRecord.Wins }}-{{ .LosingTeam.LeagueRecord.Losses }}
-                        ) {{ .WinningTeam.Score }}
-                        to {{ .LosingTeam.Score }} {{ .Where }}</p>
+                        - {{ .WinningTeam.LeagueRecord.Losses }}) beat the {{ .LosingTeam.Team.Name }}
+                        ({{ .LosingTeam.LeagueRecord.Wins }} - {{ .LosingTeam.LeagueRecord.Losses }})
+                        {{ .WinningTeam.Score }} to {{ .LosingTeam.Score }} {{ .Where }}</p>
                 {{end}}
             {{- end}}
         {{ end }}
@@ -60,8 +59,8 @@
             {{- if .FutureGames}}
                 <td>
                     {{- range $i, $f := .FutureGames }}
-                        {{ if $i }}<br>{{ end }}
-                        {{ if not $f.UpcomingInfo.IsHome }}@ {{ end }}{{ $f.UpcomingInfo.AgainstAbbr}}
+                        {{- if $i }}<br>{{- end }}
+                        {{- if not $f.UpcomingInfo.IsHome }}@{{- end }}{{ $f.UpcomingInfo.AgainstAbbr}}
                     {{- end }}
                 </td>
             {{- else }}
@@ -75,7 +74,7 @@
             {{- if .FutureGames }}
                 <td>
                     {{- range $i, $f := .FutureGames }}
-                        {{ if $i }}<br>{{ end }}
+                        {{- if $i }}<br>{{- end }}
                         {{ $f.RenderedTime }}
                     {{- end }}
                 </td>

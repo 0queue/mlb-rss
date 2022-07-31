@@ -192,14 +192,9 @@ func MakeReport(teams map[int]mlb.TeamFull, myTeam mlb.TeamFull, m mlb.Mlb, toda
 			if involvesTeam(game, myTeam.Id) {
 				game := game
 
-				fmt.Printf("analyzing %+v %d\n", game.GameDate, daysBetween(game.GameDate, yesterday))
 				if daysBetween(game.GameDate, yesterday) == 0 {
 					yesterdaysGame = append(yesterdaysGame, game)
-				}
-
-				days := daysBetween(game.GameDate, today)
-
-				if days >= 0 && days < len(upcoming) {
+				} else if days := daysBetween(game.GameDate, today); days >= 0 && days < len(upcoming) {
 					upcoming[days] = append(upcoming[days], game)
 				}
 			}

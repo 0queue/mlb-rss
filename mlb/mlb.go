@@ -12,7 +12,7 @@ type Date struct {
 }
 
 type Game struct {
-	gamePk            string
+	GamePk            int
 	GameType          string
 	Season            string
 	GameDate          time.Time

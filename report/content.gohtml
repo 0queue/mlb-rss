@@ -33,7 +33,7 @@
 
             {{- if .YesterdayInfo }}
                 {{with .YesterdayInfo}}
-                    <p>Game {{ inc $i }}: The {{ .WinningTeam }} ({{ .WinningTeam.LeagueRecord.Wins }}
+                    <p>Game {{ inc $i }}: The {{ .WinningTeam.Team.Name }} ({{ .WinningTeam.LeagueRecord.Wins }}
                         - {{ .WinningTeam.LeagueRecord.Losses }}) beat the {{ .LosingTeam.Team.Name }}
                         ({{ .LosingTeam.LeagueRecord.Wins }} - {{ .LosingTeam.LeagueRecord.Losses }})
                         {{ .WinningTeam.Score }} to {{ .LosingTeam.Score }} {{ .Where }}</p>

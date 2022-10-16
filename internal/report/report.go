@@ -7,7 +7,7 @@ import (
 	"html/template"
 	"time"
 
-	"github.com/0queue/mlb-rss/mlb"
+	"github.com/0queue/mlb-rss/internal/mlb"
 )
 
 //go:embed content.gohtml

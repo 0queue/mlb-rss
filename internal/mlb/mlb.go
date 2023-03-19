@@ -21,24 +21,26 @@ type MlbClient struct {
 	client   http.Client
 }
 
-func NewMlbClient(endpoint string) (MlbClient, error) {
+func NewMlbClient(endpoint string) (*MlbClient, error) {
 	if endpoint == "" {
 		endpoint = defaultEndpoint
 	}
 
 	_, err := url.Parse(endpoint)
 	if err != nil {
-		return MlbClient{}, err
+		return nil, err
 	}
 
-	var teamFullSlice []TeamFull
+	var teamFullSlice struct {
+		Teams []TeamFull
+	}
 	err = json.Unmarshal(teamInfoEmbed, &teamFullSlice)
 	if err != nil {
-		return MlbClient{}, nil
+		return nil, err
 	}
 
 	teams := make(map[int]TeamFull)
-	for _, t := range teamFullSlice {
+	for _, t := range teamFullSlice.Teams {
 		t := t
 		teams[t.Id] = t
 	}
@@ -47,7 +49,7 @@ func NewMlbClient(endpoint string) (MlbClient, error) {
 		Timeout: 5 * time.Second,
 	}
 
-	return MlbClient{
+	return &MlbClient{
 		Teams:    teams,
 		endpoint: endpoint,
 		client:   client,
@@ -56,22 +58,23 @@ func NewMlbClient(endpoint string) (MlbClient, error) {
 
 // Download raw json
 // mostly used to fetch test data
+// if start (date) == end (date), only fetches data for that day
 func (c *MlbClient) FetchRaw(start, end time.Time) ([]byte, error) {
 	startDate := start.Format(time.DateOnly)
 	endDate := end.Format(time.DateOnly)
 
-	url, err := url.Parse(c.endpoint)
+	u, err := url.Parse(c.endpoint)
 	if err != nil {
 		return nil, err
 	}
 
-	q := url.Query()
+	q := u.Query()
 	q.Set("sportId", "1")
 	q.Set("startDate", startDate)
 	q.Set("endDate", endDate)
-	url.RawQuery = q.Encode()
+	u.RawQuery = q.Encode()
 
-	resp, err := c.client.Get(url.String())
+	resp, err := c.client.Get(u.String())
 	if err != nil {
 		return nil, err
 	}

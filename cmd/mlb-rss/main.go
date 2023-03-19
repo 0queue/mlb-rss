@@ -9,8 +9,8 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/0queue/mlb-rss/internal/cache"
-	"github.com/0queue/mlb-rss/internal/report2"
+	//"github.com/0queue/mlb-rss/internal/cache"
+	//"github.com/0queue/mlb-rss/internal/report2"
 	"github.com/caarlos0/env/v7"
 	"github.com/go-co-op/gocron"
 	"golang.org/x/exp/slog"
@@ -42,8 +42,8 @@ func main() {
 	slog.SetDefault(slog.New(handler))
 
 	// seed cache
-	cache := cache.Cache[report2.Report2]{}
-	cache.Set(report2.GenerateReport())
+	// TODO cache := cache.Cache[report2.Report2]{}
+	// TODO cache.Set(report2.GenerateReport())
 
 	// prepare shutdown channel
 	// this signalCtx goes to the report generator

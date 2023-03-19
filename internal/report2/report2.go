@@ -1,19 +1,153 @@
 package report2
 
-import "github.com/0queue/mlb-rss/internal/mlb"
+import (
+	"github.com/0queue/mlb-rss/internal/mlb"
+	"golang.org/x/exp/slog"
+)
 
 type ReportGenerator struct {
-	m *mlb.Mlb
+	MyTeam mlb.TeamFull
 }
 
-func NewReportGenerator(m *mlb.Mlb) ReportGenerator {
+func NewReportGenerator(myTeam mlb.TeamFull) ReportGenerator {
 	return ReportGenerator{
-		m: m,
+		MyTeam: myTeam,
 	}
 }
 
-type Report2 struct{}
+// PastGame can be either postponed, or have a winner and loser
+// represents a postponed game if PostponeReason is not ""
+type PastGame struct {
+	Venue          mlb.Venue
+	PostponeReason string
+	IsHome         bool
+	MyTeam         mlb.Team
+	OpponentTeam   mlb.Team
+}
 
-func GenerateReport() Report2 {
-	return Report2{}
+type FutureGame struct {
+	IsHome       bool
+	MyTeam       mlb.Team
+	OpponentTeam mlb.Team
+}
+
+type Report struct {
+	// team I'm interested in
+	MyTeam mlb.TeamFull
+
+	// Yesterday can contain 0..n games
+	Yesterday []PastGame
+
+	// Future is analyzed 8 days in advance including today
+	// and each day may contain 0..n games
+	Future [8][]FutureGame
+}
+
+// Do analysis of the games and generate the report. NO RENDERING!
+// assumes the first Date is yesterday, and the rest are the future
+// ultimately, analysis consists of filtering and labelling interest
+func (g *ReportGenerator) GenerateReport(m mlb.Mlb) Report {
+
+	// so we get an array of stuff which has a date attached
+	// which means I should ignore time completely
+	dates := filterMyTeam(m.Dates, g.MyTeam.Id)
+	pastGames := analyzePastGames(dates[0], g.MyTeam.Id)
+	futureGames := analyzeFutureGames(dates[1:], g.MyTeam.Id)
+
+	return Report{
+		MyTeam:    g.MyTeam,
+		Yesterday: pastGames,
+		Future:    futureGames,
+	}
+}
+
+// keep games involving the team with the given id
+func filterMyTeam(dates []mlb.Date, id int) []mlb.Date {
+	newDates := make([]mlb.Date, 0)
+	for _, d := range dates {
+		newGames := make([]mlb.Game, 0)
+		for _, g := range d.Games {
+			if g.Teams.Home.Team.Id == id || g.Teams.Away.Team.Id == id {
+				newGames = append(newGames, g)
+			}
+		}
+
+		newDates = append(newDates, mlb.Date{
+			Date:  d.Date,
+			Games: newGames,
+		})
+	}
+
+	return newDates
+}
+
+func analyzePastGames(date mlb.Date, id int) []PastGame {
+	pastGames := make([]PastGame, 0)
+
+	slog.Info("Analyzing yesterday's game", slog.String("date", date.Date))
+
+	for _, g := range date.Games {
+
+		isHome := g.Teams.Home.Team.Id == id
+		var myTeam mlb.Team
+		var opponentTeam mlb.Team
+
+		if isHome {
+			myTeam = g.Teams.Home
+			opponentTeam = g.Teams.Away
+		} else {
+			myTeam = g.Teams.Away
+			opponentTeam = g.Teams.Home
+		}
+
+		p := PastGame{
+			Venue:          g.Venue,
+			PostponeReason: g.Status.Reason,
+			IsHome:         isHome,
+			MyTeam:         myTeam,
+			OpponentTeam:   opponentTeam,
+		}
+
+		pastGames = append(pastGames, p)
+	}
+
+	return pastGames
+}
+
+func analyzeFutureGames(dates []mlb.Date, id int) [8][]FutureGame {
+	var futureGames [8][]FutureGame
+
+	if len(dates) != 8 {
+		slog.Warn("Number of future dates not as expected", slog.Int("expected", 8), slog.Int("actual", len(dates)))
+	}
+
+	for i, d := range dates {
+		day := make([]FutureGame, 0)
+
+		for _, g := range d.Games {
+
+			isHome := g.Teams.Home.Team.Id == id
+			var myTeam mlb.Team
+			var opponentTeam mlb.Team
+			if isHome {
+				myTeam = g.Teams.Home
+				opponentTeam = g.Teams.Away
+			} else {
+				myTeam = g.Teams.Away
+				opponentTeam = g.Teams.Home
+			}
+
+			futureGame := FutureGame{
+				IsHome:       isHome,
+				MyTeam:       myTeam,
+				OpponentTeam: opponentTeam,
+			}
+
+			day = append(day, futureGame)
+		}
+
+		futureGames[i] = day
+	}
+
+	return futureGames
 }

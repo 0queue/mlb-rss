@@ -10,7 +10,6 @@ import (
 	"github.com/0queue/mlb-rss/internal/mlb"
 )
 
-//go:embed content.gohtml
 var embeddedTemplate string
 
 type Report struct {

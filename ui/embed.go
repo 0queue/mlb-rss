@@ -1,4 +1,4 @@
-package web
+package ui
 
 import (
 	_ "embed"
@@ -6,3 +6,6 @@ import (
 
 //go:embed teams.json
 var TeamsJson []byte
+
+//go:embed report.html.tpl
+var ReportTemplate string

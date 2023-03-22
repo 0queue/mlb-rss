@@ -21,8 +21,43 @@ type PastGame struct {
 	Venue          mlb.Venue
 	PostponeReason string
 	IsHome         bool
-	MyTeam         mlb.Team
-	OpponentTeam   mlb.Team
+	// TODO change to winning and losing
+	MyTeam       mlb.Team
+	OpponentTeam mlb.Team
+}
+
+// PastGame2 is used by past-game.html.tpl
+type PastGame2 struct {
+	PostponeReason string
+	Venue          mlb.Venue
+	IsWinnerHome   bool
+	W              mlb.Team
+	L              mlb.Team
+}
+
+type Yesterday struct {
+	MyTeam          mlb.Team
+	PastGames       []PastGame2
+	BaseballTheater string
+}
+
+type FutureDay struct {
+	// Sun, Mon, Tue, etc
+	DayAbbr string
+	Games   []FutureGame2
+}
+
+type FutureGame2 struct {
+	// GameTimeLocal is when the game is on in the rss feed's timezone
+	GameTimeLocal string
+	IsMyTeamHome  bool
+	AgainstAbbr   string
+}
+
+type Upcoming struct {
+	FutureDays [8]FutureDay
+	// Timezone is the rss feed's timezone
+	Timezone string
 }
 
 type FutureGame struct {
@@ -43,6 +78,14 @@ type Report struct {
 	Future [8][]FutureGame
 }
 
+type Report2 struct {
+	Yesterday Yesterday
+	Upcoming  Upcoming
+	// TODO find a better way to do headlines
+	Headline string
+	Link     string
+}
+
 // Do analysis of the games and generate the report. NO RENDERING!
 // assumes the first Date is yesterday, and the rest are the future
 // ultimately, analysis consists of filtering and labelling interest
@@ -53,6 +96,8 @@ func (g *ReportGenerator) GenerateReport(m mlb.Mlb) Report {
 	dates := filterMyTeam(m.Dates, g.MyTeam.Id)
 	pastGames := analyzePastGames(dates[0], g.MyTeam.Id)
 	futureGames := analyzeFutureGames(dates[1:], g.MyTeam.Id)
+
+	// TODO change the analyses to generate report structs directly
 
 	return Report{
 		MyTeam:    g.MyTeam,

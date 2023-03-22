@@ -11,3 +11,7 @@ run: build
 # visit localhost:8000 to use a nice json viewer
 serve-test-data:
 	python3 -m http.server -d test/data/
+
+fetch-team-data:
+	curl 'https://statsapi.mlb.com/api/v1/teams?sportId=1' | jq -r > internal/mlb/teams.json
+

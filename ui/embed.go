@@ -1,8 +1,8 @@
 package ui
 
 import (
-	_ "embed"
+	"embed"
 )
 
-//go:embed report.html.tpl
-var ReportTemplate string
+//go:embed *.html.tpl
+var ReportTemplates embed.FS

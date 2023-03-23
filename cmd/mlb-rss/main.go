@@ -9,8 +9,9 @@ import (
 	"syscall"
 	"time"
 
-	//"github.com/0queue/mlb-rss/internal/cache"
-	//"github.com/0queue/mlb-rss/internal/report2"
+	"github.com/0queue/mlb-rss/internal/cache"
+	"github.com/0queue/mlb-rss/internal/mlb"
+	"github.com/0queue/mlb-rss/internal/report2"
 	"github.com/caarlos0/env/v7"
 	"github.com/go-co-op/gocron"
 	"golang.org/x/exp/slog"
@@ -41,9 +42,21 @@ func main() {
 	}
 	slog.SetDefault(slog.New(handler))
 
+	m, err := mlb.NewMlbClient("")
+	if err != nil {
+		slog.Error(err.Error())
+		os.Exit(1)
+	}
+	// TODO finish instantiating the report generator
+	//      which means a config for team abbr or name
+	//      which searches all teams
+	//      then generate a report
+	//      then serve it as html!
+	rg := report2.NewReportGenerator(m.Teams, time.Local)
+
 	// seed cache
-	// TODO cache := cache.Cache[report2.Report2]{}
-	// TODO cache.Set(report2.GenerateReport())
+	cache := cache.Cache[report2.Report]{}
+	cache.Set(report2.GenerateReport())
 
 	// prepare shutdown channel
 	// this signalCtx goes to the report generator

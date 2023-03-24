@@ -21,6 +21,7 @@ type config struct {
 	JsonLog bool   `envDefault:"false"`
 	Addr    string `envDefault:":8080"`
 	Cron    string `envDefault:"0 7 * * *"`
+	MyTeam  string `envDefault:"BAL"`
 }
 
 func main() {
@@ -42,33 +43,37 @@ func main() {
 	}
 	slog.SetDefault(slog.New(handler))
 
-	m, err := mlb.NewMlbClient("")
+	m, err := mlb.NewMlbClient()
 	if err != nil {
 		slog.Error(err.Error())
 		os.Exit(1)
 	}
-	// TODO finish instantiating the report generator
-	//      which means a config for team abbr or name
-	//      which searches all teams
-	//      then generate a report
-	//      then serve it as html!
-	rg := report2.NewReportGenerator(m.Teams, time.Local)
+
+	myTeam, ok := m.SearchTeams(c.MyTeam)
+	if !ok {
+		slog.Error("Failed to find team", slog.String("team", c.MyTeam))
+		os.Exit(1)
+	}
+	rg := report2.NewReportGenerator(myTeam, m.Teams, time.Local)
 
 	// seed cache
 	cache := cache.Cache[report2.Report]{}
-	cache.Set(report2.GenerateReport())
-
 	// prepare shutdown channel
 	// this signalCtx goes to the report generator
 	// not the http server though, because it is already cancelled
 	signalCtx, signalCancel := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer signalCancel()
 
-	// TODO figure out implications of local time
 	// start refresh cron job
 	cron := gocron.NewScheduler(time.Local)
-	cron.Cron(c.Cron).Do(func() {
-		fmt.Println("Doing the thing")
+	_, _ = cron.Cron(c.Cron).StartImmediately().Do(func() {
+		now := time.Now()
+		slog.Info("Updating cache", slog.Time("now", now))
+		res, err := m.Fetch(now.AddDate(0, 0, -1), now.AddDate(0, 0, 7))
+		if err != nil {
+			slog.Error("Failed to fetch latest information", slog.String("err", err.Error()))
+		}
+		cache.Set(rg.GenerateReport(res, now))
 	})
 
 	cron.StartAsync()
@@ -77,6 +82,27 @@ func main() {
 	mux := http.NewServeMux()
 	mux.HandleFunc("/rss.xml", func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
+	})
+	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+		report, ok := cache.Get()
+		if !ok {
+			slog.Warn("Cache not populated yet")
+			w.WriteHeader(http.StatusNotFound)
+			return
+		}
+
+		rendered, err := rg.Render(report)
+		if err != nil {
+			slog.Error("Failed to render report", slog.String("err", err.Error()))
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+
+		w.Header().Add("content-type", "text/html")
+		w.Write([]byte(`<!DOCTYPE html><head><meta charset="utf-8"></head><html><body>`))
+		w.Write([]byte(fmt.Sprintf(`<h2>%s</h2>`, report.Headline)))
+		w.Write([]byte(rendered))
+		w.Write([]byte(`</body></html>`))
 	})
 
 	server := http.Server{

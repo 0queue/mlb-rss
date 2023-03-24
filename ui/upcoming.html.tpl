@@ -32,12 +32,14 @@
 			{{ $g.GameTimeLocal }}
 		{{ end }}
 		</td>
+		{{ else }}
+		<td></td>
 		{{ end }}
 		{{ end }}
 	</tr>
 </table>
 
 <!-- yeah yeah this doesn't work in miniflux (unless I trust the site?) -->
-<p style="font-size: small; text-align: right;">TZ={{ .UpcomingTimezone }}</p>
+<p style="font-size: small; text-align: right;">TZ={{ .Timezone }}</p>
 
 {{ end }}

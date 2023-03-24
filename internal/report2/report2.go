@@ -14,14 +14,16 @@ import (
 type ReportGenerator struct {
 	MyTeam   mlb.TeamFull
 	AllTeams map[int]mlb.TeamFull
-	Location time.Location
+	Location *time.Location
+	t        *template.Template
 }
 
-func NewReportGenerator(myTeam mlb.TeamFull, allTeams map[int]mlb.TeamFull, loc time.Location) ReportGenerator {
+func NewReportGenerator(myTeam mlb.TeamFull, allTeams map[int]mlb.TeamFull, loc *time.Location) ReportGenerator {
 	return ReportGenerator{
 		MyTeam:   myTeam,
 		AllTeams: allTeams,
 		Location: loc,
+		t:        template.Must(template.ParseFS(ui.ReportTemplates, "*.html.tpl")),
 	}
 }
 
@@ -70,17 +72,19 @@ type Report struct {
 // assumes the first Date is yesterday, and the rest are the future
 // ultimately, analysis consists of filtering
 func (rg *ReportGenerator) GenerateReport(m mlb.Mlb, today time.Time) Report {
-
 	// so we get an array of stuff which has a date attached
 	// which means I should ignore time completely
 	dates := filterMyTeam(m.Dates, rg.MyTeam.Id)
 	pastGames := analyzePastGames(dates[0], rg.MyTeam.Id)
 	futureGames := rg.analyzeFutureGames(today, dates[1:])
 
+	baseballTheaterDate := today.AddDate(0, 0, -1).Format("20060102")
+	link := fmt.Sprintf("https://baseball.theater/games/%s", baseballTheaterDate)
+
 	yesterday := Yesterday{
 		MyTeam:          mlb.Team{},
 		PastGames:       pastGames,
-		BaseballTheater: "",
+		BaseballTheater: link,
 	}
 
 	tz, _ := today.Local().Zone()
@@ -89,9 +93,6 @@ func (rg *ReportGenerator) GenerateReport(m mlb.Mlb, today time.Time) Report {
 		FutureDays: futureGames,
 		Timezone:   tz,
 	}
-
-	baseballTheaterDate := today.AddDate(0, 0, -1).Format("20060102")
-	link := fmt.Sprintf("https://baseball.theater/games/%s", baseballTheaterDate)
 
 	headline := rg.generateHeadline(pastGames, today)
 
@@ -104,11 +105,13 @@ func (rg *ReportGenerator) GenerateReport(m mlb.Mlb, today time.Time) Report {
 }
 
 // Render uses templates to render reports to html
-func (r *Report) Render() string {
-	t := template.Must(template.ParseFS(ui.ReportTemplates))
+func (rg *ReportGenerator) Render(r Report) (string, error) {
 	var content bytes.Buffer
-	t.ExecuteTemplate(&content, "report2", r)
-	return content.String()
+	err := rg.t.ExecuteTemplate(&content, "report2.html.tpl", r)
+	if err != nil {
+		return "", err
+	}
+	return content.String(), nil
 }
 
 // keep games involving the team with the given id
@@ -138,6 +141,7 @@ func analyzePastGames(date mlb.Date, id int) []PastGame {
 
 	for _, g := range date.Games {
 
+		// TODO doesn't really handle ties well
 		var isWinnerHome = g.Teams.Home.IsWinner
 		var winner mlb.Team
 		var loser mlb.Team
@@ -150,8 +154,13 @@ func analyzePastGames(date mlb.Date, id int) []PastGame {
 			loser = g.Teams.Away
 		}
 
+		var postponeReason string
+		if g.Status.DetailedState == "Postponed" {
+			postponeReason = g.Status.Reason
+		}
+
 		p := PastGame{
-			PostponeReason: g.Status.Reason,
+			PostponeReason: postponeReason,
 			Venue:          g.Venue,
 			IsWinnerHome:   isWinnerHome,
 			W:              winner,
@@ -167,14 +176,24 @@ func analyzePastGames(date mlb.Date, id int) []PastGame {
 func (rg *ReportGenerator) analyzeFutureGames(today time.Time, dates []mlb.Date) [8]FutureDay {
 	var futureGames [8]FutureDay
 
-	if len(dates) != 8 {
-		slog.Warn("Number of future dates not as expected", slog.Int("expected", 8), slog.Int("actual", len(dates)))
+	// if a Date has no games then it will not be there
+	m := make(map[string]mlb.Date)
+	for _, d := range dates {
+		m[d.Date] = d
 	}
 
-	for i, d := range dates {
-		games := make([]FutureGame, 0)
+	for i := 0; i < 8; i += 1 {
+		k := today.AddDate(0, 0, i).Format("2006-01-02")
+		d, ok := m[k]
+		var gs []mlb.Game
+		if !ok {
+			gs = make([]mlb.Game, 0)
+		} else {
+			gs = d.Games
+		}
 
-		for _, g := range d.Games {
+		games := make([]FutureGame, 0)
+		for _, g := range gs {
 
 			isHome := g.Teams.Home.Team.Id == rg.MyTeam.Id
 			var opponentTeam mlb.Team
@@ -185,7 +204,7 @@ func (rg *ReportGenerator) analyzeFutureGames(today time.Time, dates []mlb.Date)
 			}
 
 			futureGame := FutureGame{
-				GameTimeLocal: g.GameDate.In(&rg.Location).Format("15:04"),
+				GameTimeLocal: g.GameDate.In(rg.Location).Format("15:04"),
 				IsMyTeamHome:  isHome,
 				AgainstAbbr:   rg.AllTeams[opponentTeam.Team.Id].Abbreviation,
 			}
@@ -201,6 +220,8 @@ func (rg *ReportGenerator) analyzeFutureGames(today time.Time, dates []mlb.Date)
 		}
 	}
 
+	slog.Info("Upcoming games analyzed", slog.Int("daysWithGames", len(dates)))
+
 	return futureGames
 }
 
@@ -209,7 +230,8 @@ func (rg *ReportGenerator) generateHeadline(pastGames []PastGame, today time.Tim
 	// 2. Postpone
 	// 3. team wins! 1 of 1
 	// 4. team loses :( 1 of 1
-	// 5. Double header
+	// 5. team ties? guess so
+	// 6. Double header
 
 	switch len(pastGames) {
 	case 0:
@@ -219,6 +241,8 @@ func (rg *ReportGenerator) generateHeadline(pastGames []PastGame, today time.Tim
 		g := pastGames[0]
 		if g.PostponeReason != "" {
 			headline = fmt.Sprintf("Game was postponed due to %s", g.PostponeReason)
+		} else if g.W.Score == g.L.Score {
+			headline = fmt.Sprintf("The %s tie, %d to %d", rg.MyTeam.Name, g.W.Score, g.L.Score)
 		} else if g.W.Team.Id == rg.MyTeam.Id {
 			headline = fmt.Sprintf("The %s win! %d to %d", rg.MyTeam.Name, g.W.Score, g.L.Score)
 		} else {

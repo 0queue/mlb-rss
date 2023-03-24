@@ -8,7 +8,7 @@ import (
 )
 
 func main() {
-	m, err := mlb.NewMlbClient("")
+	m, err := mlb.NewMlbClient()
 	if err != nil {
 		panic(err)
 	}

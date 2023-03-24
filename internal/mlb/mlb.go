@@ -6,35 +6,25 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+	"strings"
 	"time"
 )
 
-var defaultEndpoint = "https://statsapi.mlb.com/api/v1/schedule/games"
+var scheduleEndpoint = "https://statsapi.mlb.com/api/v1/schedule/games"
 
 //go:embed teams.json
 var teamInfoEmbed []byte
 
 type MlbClient struct {
-	Teams map[int]TeamFull
-	// endpoint is a string so we don't have to clone *url.URL just to send a request
-	endpoint string
-	client   http.Client
+	Teams  map[int]TeamFull
+	client http.Client
 }
 
-func NewMlbClient(endpoint string) (*MlbClient, error) {
-	if endpoint == "" {
-		endpoint = defaultEndpoint
-	}
-
-	_, err := url.Parse(endpoint)
-	if err != nil {
-		return nil, err
-	}
-
+func NewMlbClient() (*MlbClient, error) {
 	var teamFullSlice struct {
 		Teams []TeamFull
 	}
-	err = json.Unmarshal(teamInfoEmbed, &teamFullSlice)
+	err := json.Unmarshal(teamInfoEmbed, &teamFullSlice)
 	if err != nil {
 		return nil, err
 	}
@@ -50,9 +40,8 @@ func NewMlbClient(endpoint string) (*MlbClient, error) {
 	}
 
 	return &MlbClient{
-		Teams:    teams,
-		endpoint: endpoint,
-		client:   client,
+		Teams:  teams,
+		client: client,
 	}, nil
 }
 
@@ -63,7 +52,7 @@ func (c *MlbClient) FetchRaw(start, end time.Time) ([]byte, error) {
 	startDate := start.Format(time.DateOnly)
 	endDate := end.Format(time.DateOnly)
 
-	u, err := url.Parse(c.endpoint)
+	u, err := url.Parse(scheduleEndpoint)
 	if err != nil {
 		return nil, err
 	}
@@ -104,8 +93,30 @@ func (c *MlbClient) Fetch(start, end time.Time) (Mlb, error) {
 }
 
 // TODO find out where I got the data, and make a function to download it
+// https://statsapi.mlb.com/api/v1/teams?sportId=1
 func (c *MlbClient) FetchTeamFull() {
 	panic("not implemented yet")
+}
+
+// SearchTeams searches for a team based on the abbreviation if q is three letters,
+// or as a substring of the full name
+func (c *MlbClient) SearchTeams(q string) (TeamFull, bool) {
+	var found TeamFull
+	var ok bool
+	for _, t := range c.Teams {
+		t := t
+		if len(q) == 3 && strings.ToLower(t.Abbreviation) == strings.ToLower(q) {
+			found = t
+			ok = true
+			break
+		} else if strings.Contains(strings.ToLower(t.Name), strings.ToLower(q)) {
+			found = t
+			ok = true
+			break
+		}
+	}
+
+	return found, ok
 }
 
 type Mlb struct {
@@ -117,6 +128,7 @@ type Date struct {
 	Games []Game
 }
 
+// TODO hydrate videos and pass all the way up
 type Game struct {
 	GamePk            int
 	GameType          string

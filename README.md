@@ -15,51 +15,22 @@ An example API response from
 ## Building
 
 ```
-$ go install # or build I guess  
+just build
 ```
 
-or
-
 ```
-$ docker build -t mlb-rss .
+just build-container-image
 ```
-
-for a container (scratch + binary + certificates)
-
-> Note: the containerized binary will need timezone information
-        to generate proper local times.  Suggest mounting `/etc/timezone`
-        as readonly or setting the `TZ` environment variable appropriately
 
 ## Usage
 
-This program implements 2 subcommands: `generate` and `serve`
 
-1. Generate the RSS content with `generate`:
+Service runs by default on port 8080 serving the /rss.xml path
 
-  ```
-  $ mlb-rss generate ./mlb-rss.xml
-  ```
-
-2. Serve that file over HTTP:
-
-  ```
-  $ mlb-rss serve ./mlb-rss.xml
-  ```
-
-3. Point your feed reader at port `8080`
-
-4. Run Step 1 however often you want the feed to be updated,
-   using a cron job or similar. It currently does not inspect
-   the time of last generation, so every `generate` invocation
-   will add a new entry. I only run it once a day anyways.
+```
+just r
+```
   
 ## My deployment
 
-My personal server runs the containerized version with podman,
-where the `serve` process is a normal systemd service, and the
-`generate` process is a `OneShot` service activated by a timer,
-writing to the host filesystem (rather than a volume, for easy
-`cat` debugging). [Miniflux] is the feed reader it is known to
-work with.
-
-[Miniflux]: https://github.com/miniflux/miniflux
+Basically a hello world nomad job

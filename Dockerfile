@@ -1,4 +1,4 @@
-FROM golang:1.18.1 AS builder
+FROM golang:1.20.2 AS builder
 WORKDIR /app
 COPY go.mod ./
 COPY go.sum ./
@@ -6,9 +6,9 @@ RUN go mod download
 # not very good for the docker build
 # cache but it sure saves time
 COPY . ./
-RUN CGO_ENABLED=0 go build -o /mlb-rss
+RUN CGO_ENABLED=0 go build -o /mlb-rss cmd/mlb-rss/main.go
 
-FROM scratch
-COPY --from=builder /etc/ssl/certs/ /etc/ssl/certs/
+FROM gcr.io/distroless/static-debian11
 COPY --from=builder /mlb-rss /mlb-rss
+ENV JSON_LOG=true
 ENTRYPOINT ["/mlb-rss"]

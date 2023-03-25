@@ -15,3 +15,8 @@ serve-test-data:
 fetch-team-data:
 	curl 'https://statsapi.mlb.com/api/v1/teams?sportId=1' | jq -r > internal/mlb/teams.json
 
+build-container-image:
+	docker build -t ghcr.io/0queue/mlb-rss:1.0 .
+
+push-container-image: build-container-image
+	docker push ghcr.io/0queue/mlb-rss:1.0

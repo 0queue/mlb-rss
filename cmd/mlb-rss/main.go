@@ -12,7 +12,7 @@ import (
 
 	"github.com/0queue/mlb-rss/internal/cache"
 	"github.com/0queue/mlb-rss/internal/mlb"
-	"github.com/0queue/mlb-rss/internal/report2"
+	"github.com/0queue/mlb-rss/internal/report"
 	"github.com/0queue/mlb-rss/internal/rss"
 	"github.com/caarlos0/env/v7"
 	"github.com/go-co-op/gocron"
@@ -56,10 +56,10 @@ func main() {
 		slog.Error("Failed to find team", slog.String("team", c.MyTeam))
 		os.Exit(1)
 	}
-	rg := report2.NewReportGenerator(myTeam, m.Teams, time.Local)
+	rg := report.NewReportGenerator(myTeam, m.Teams, time.Local)
 
 	// seed cache
-	cache := cache.Cache[report2.Report]{}
+	cache := cache.Cache[report.Report]{}
 	// prepare shutdown channel
 	// this signalCtx goes to the report generator
 	// not the http server though, because it is already cancelled
@@ -110,7 +110,7 @@ func main() {
 						Description: &rss.Description{
 							Text: rendered,
 						},
-						Guid:    "mlb-rss-" + cachedReport.When.Format(report2.BaseballTheaterTimeFormat),
+						Guid:    "mlb-rss-" + cachedReport.When.Format(report.BaseballTheaterTimeFormat),
 						PubDate: cachedReport.When.Format(time.RFC822),
 					},
 				},

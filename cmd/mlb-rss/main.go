@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"encoding/xml"
 	"fmt"
 	"net/http"
 	"os"
@@ -12,6 +13,7 @@ import (
 	"github.com/0queue/mlb-rss/internal/cache"
 	"github.com/0queue/mlb-rss/internal/mlb"
 	"github.com/0queue/mlb-rss/internal/report2"
+	"github.com/0queue/mlb-rss/internal/rss"
 	"github.com/caarlos0/env/v7"
 	"github.com/go-co-op/gocron"
 	"golang.org/x/exp/slog"
@@ -81,28 +83,50 @@ func main() {
 	// serve xml
 	mux := http.NewServeMux()
 	mux.HandleFunc("/rss.xml", func(w http.ResponseWriter, r *http.Request) {
-		w.WriteHeader(http.StatusOK)
-	})
-	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-		report, ok := cache.Get()
+		cachedReport, ok := cache.Get()
 		if !ok {
 			slog.Warn("Cache not populated yet")
 			w.WriteHeader(http.StatusNotFound)
 			return
 		}
 
-		rendered, err := rg.Render(report)
+		rendered, err := rg.Render(cachedReport)
 		if err != nil {
 			slog.Error("Failed to render report", slog.String("err", err.Error()))
 			w.WriteHeader(http.StatusInternalServerError)
 			return
 		}
 
-		w.Header().Add("content-type", "text/html")
-		w.Write([]byte(`<!DOCTYPE html><head><meta charset="utf-8"></head><html><body>`))
-		w.Write([]byte(fmt.Sprintf(`<h2>%s</h2>`, report.Headline)))
-		w.Write([]byte(rendered))
-		w.Write([]byte(`</body></html>`))
+		feed := rss.Rss{
+			Version: "2.0",
+			Channel: rss.Channel{
+				Title:       "MLB RSS",
+				Link:        "https://baseball.theater",
+				Description: "Feed generated from statsapi.mlb.com",
+				Items: []rss.Item{
+					{
+						Title: cachedReport.Headline,
+						Link:  cachedReport.Link,
+						Description: &rss.Description{
+							Text: rendered,
+						},
+						Guid:    "mlb-rss-" + cachedReport.When.Format(report2.BaseballTheaterTimeFormat),
+						PubDate: cachedReport.When.Format(time.RFC822),
+					},
+				},
+			},
+		}
+
+		// should probably just cache the xml
+		bytes, err := xml.MarshalIndent(feed, "", " ")
+		if err != nil {
+			slog.Error("Failed to marshal rss feed", slog.String("err", err.Error()))
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+
+		w.Header().Add("content-type", "application/rss+xml")
+		w.Write(bytes)
 	})
 
 	server := http.Server{

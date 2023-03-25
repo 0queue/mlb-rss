@@ -11,6 +11,8 @@ import (
 	"golang.org/x/exp/slog"
 )
 
+const BaseballTheaterTimeFormat = "20060102"
+
 type ReportGenerator struct {
 	MyTeam   mlb.TeamFull
 	AllTeams map[int]mlb.TeamFull
@@ -66,6 +68,7 @@ type Report struct {
 	Upcoming  Upcoming
 	Headline  string
 	Link      string
+	When      time.Time
 }
 
 // Do analysis of the games and generate the report. NO TEMPLATES
@@ -78,7 +81,7 @@ func (rg *ReportGenerator) GenerateReport(m mlb.Mlb, today time.Time) Report {
 	pastGames := analyzePastGames(dates[0], rg.MyTeam.Id)
 	futureGames := rg.analyzeFutureGames(today, dates[1:])
 
-	baseballTheaterDate := today.AddDate(0, 0, -1).Format("20060102")
+	baseballTheaterDate := today.AddDate(0, 0, -1).Format(BaseballTheaterTimeFormat)
 	link := fmt.Sprintf("https://baseball.theater/games/%s", baseballTheaterDate)
 
 	yesterday := Yesterday{
@@ -101,6 +104,7 @@ func (rg *ReportGenerator) GenerateReport(m mlb.Mlb, today time.Time) Report {
 		Upcoming:  upcoming,
 		Headline:  headline,
 		Link:      link,
+		When:      today,
 	}
 }
 
@@ -151,7 +155,7 @@ func analyzePastGames(date mlb.Date, id int) []PastGame {
 			loser = g.Teams.Away
 		} else {
 			winner = g.Teams.Away
-			loser = g.Teams.Away
+			loser = g.Teams.Home
 		}
 
 		var postponeReason string

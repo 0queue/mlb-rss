@@ -46,7 +46,7 @@ type FutureGame struct {
 }
 
 type Yesterday struct {
-	MyTeam          mlb.Team
+	MyTeam          mlb.TeamFull
 	PastGames       []PastGame
 	BaseballTheater string
 }
@@ -85,7 +85,7 @@ func (rg *ReportGenerator) GenerateReport(m mlb.Mlb, today time.Time) Report {
 	link := fmt.Sprintf("https://baseball.theater/games/%s", baseballTheaterDate)
 
 	yesterday := Yesterday{
-		MyTeam:          mlb.Team{},
+		MyTeam:          rg.MyTeam,
 		PastGames:       pastGames,
 		BaseballTheater: link,
 	}

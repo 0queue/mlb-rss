@@ -82,19 +82,56 @@ func (mc *MlbClient) FetchScheduleRaw(start, end time.Time, teamId int) ([]byte,
 	return body, nil
 }
 
+func (mc *MlbClient) FetchContentRaw(gamePk int) ([]byte, error) {
+	u, err := url.Parse(apiEndpoint)
+	if err != nil {
+		return nil, err
+	}
+
+	u.Path = path.Join(u.Path, "game", strconv.Itoa(gamePk), "content")
+
+	resp, err := mc.client.Get(u.String())
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, err
+	}
+
+	return body, nil
+}
+
+func (mc *MlbClient) FetchContent(gamePk int) (Content, error) {
+	raw, err := mc.FetchContentRaw(gamePk)
+	if err != nil {
+		return Content{}, err
+	}
+
+	var c Content
+	err = json.Unmarshal(raw, &c)
+	if err != nil {
+		return Content{}, err
+	}
+
+	return c, nil
+}
+
 func (mc *MlbClient) FetchSchedule(start, end time.Time, teamId int) (Schedule, error) {
 	raw, err := mc.FetchScheduleRaw(start, end, teamId)
 	if err != nil {
 		return Schedule{}, err
 	}
 
-	var m Schedule
-	err = json.Unmarshal(raw, &m)
+	var s Schedule
+	err = json.Unmarshal(raw, &s)
 	if err != nil {
 		return Schedule{}, err
 	}
 
-	return m, nil
+	return s, nil
 }
 
 // TODO find out where I got the data, and make a function to download it
@@ -122,4 +159,30 @@ func (mc *MlbClient) FindTeam(q string) (Team, bool) {
 	}
 
 	return found, ok
+}
+
+// search for typ=mlbtax and value=condensed_game
+func (c *Content) FindByTypeAndValue(typ, value string) (Highlight, bool) {
+	for _, h := range c.Highlights.Hightlights.Items {
+		h := h
+		for _, k := range h.KeywordsAll {
+			if k.Type == typ && k.Value == value {
+				return h, true
+			}
+		}
+	}
+
+	return Highlight{}, false
+}
+
+// search for "highBit"
+func (h *Highlight) FindPlaybackByName(name string) (Playback, bool) {
+	for _, p := range h.Playbacks {
+		p := p
+		if p.Name == name {
+			return p, true
+		}
+	}
+
+	return Playback{}, false
 }

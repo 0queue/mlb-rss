@@ -2,6 +2,7 @@ package report
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
 	"html/template"
 	"time"
@@ -14,78 +15,42 @@ import (
 const BaseballTheaterTimeFormat = "20060102"
 
 type ReportGenerator struct {
-	MyTeam   mlb.Team
-	AllTeams map[int]mlb.Team
+	MyTeamId int
+	mc       *mlb.MlbClient
 	Location *time.Location
 	t        *template.Template
 }
 
-func NewReportGenerator(myTeam mlb.Team, allTeams map[int]mlb.Team, loc *time.Location) ReportGenerator {
+func NewReportGenerator(myTeamId int, mc *mlb.MlbClient, loc *time.Location) ReportGenerator {
 	return ReportGenerator{
-		MyTeam:   myTeam,
-		AllTeams: allTeams,
+		MyTeamId: myTeamId,
+		mc:       mc,
 		Location: loc,
 		t:        template.Must(template.ParseFS(ui.ReportTemplates, "*.html.tpl")),
 	}
 }
 
-// PastGame is used by past-game.html.tpl
-type PastGame struct {
-	PostponeReason string
-	Venue          mlb.Venue
-	IsWinnerHome   bool
-	W              mlb.GameTeam
-	L              mlb.GameTeam
-}
-
-type FutureGame struct {
-	// GameTimeLocal is when the game is on in the rss feed's timezone
-	GameTimeLocal string
-	IsMyTeamHome  bool
-	AgainstAbbr   string
-}
-
-type Yesterday struct {
-	MyTeam          mlb.Team
-	PastGames       []PastGame
-	BaseballTheater string
-}
-
-type FutureDay struct {
-	// Sun, Mon, Tue, etc
-	DayAbbr string
-	Games   []FutureGame
-}
-
-type Upcoming struct {
-	FutureDays [8]FutureDay
-	// Timezone is the rss feed's timezone
-	Timezone string
-}
-
-type Report struct {
-	Yesterday Yesterday
-	Upcoming  Upcoming
-	Headline  string
-	Link      string
-	When      time.Time
-}
-
 // Do analysis of the games and generate the report. NO TEMPLATES
 // assumes the first Date is yesterday, and the rest are the future
 // ultimately, analysis consists of filtering
-func (rg *ReportGenerator) GenerateReport(m mlb.Schedule, today time.Time) Report {
+func (rg *ReportGenerator) GenerateReport(today time.Time) (Report, error) {
+
+	s, err := rg.mc.FetchSchedule(today.AddDate(0, 0, -1), today.AddDate(0, 0, 7), rg.MyTeamId)
+	if err != nil {
+		return Report{}, nil
+	}
+
 	// so we get an array of stuff which has a date attached
 	// which means I should ignore time completely
-	dates := filterMyTeam(m.Dates, rg.MyTeam.Id)
-	pastGames := analyzePastGames(dates[0], rg.MyTeam.Id)
+	dates := filterMyTeam(s.Dates, rg.MyTeamId)
+	pastGames := rg.analyzePastGames(dates[0], rg.MyTeamId)
 	futureGames := rg.analyzeFutureGames(today, dates[1:])
 
 	baseballTheaterDate := today.AddDate(0, 0, -1).Format(BaseballTheaterTimeFormat)
 	link := fmt.Sprintf("https://baseball.theater/games/%s", baseballTheaterDate)
 
 	yesterday := Yesterday{
-		MyTeam:          rg.MyTeam,
+		MyTeamName:      rg.mc.AllTeams[rg.MyTeamId].Name,
 		PastGames:       pastGames,
 		BaseballTheater: link,
 	}
@@ -105,7 +70,7 @@ func (rg *ReportGenerator) GenerateReport(m mlb.Schedule, today time.Time) Repor
 		Headline:  headline,
 		Link:      link,
 		When:      today,
-	}
+	}, nil
 }
 
 // Render uses templates to render reports to html
@@ -138,7 +103,7 @@ func filterMyTeam(dates []mlb.Date, id int) []mlb.Date {
 	return newDates
 }
 
-func analyzePastGames(date mlb.Date, id int) []PastGame {
+func (rg *ReportGenerator) analyzePastGames(date mlb.Date, id int) []PastGame {
 	pastGames := make([]PastGame, 0)
 
 	slog.Info("Analyzing yesterday's game", slog.String("date", date.Date))
@@ -163,12 +128,22 @@ func analyzePastGames(date mlb.Date, id int) []PastGame {
 			postponeReason = g.Status.Reason
 		}
 
+		u, err := rg.fetchCondensedGame(g.GamePk)
+		if err != nil {
+			slog.Warn(
+				"Failed to fetch condensed game",
+				slog.Int("gamePk", g.GamePk),
+				slog.String("err", err.Error()),
+			)
+		}
+
 		p := PastGame{
-			PostponeReason: postponeReason,
-			Venue:          g.Venue,
-			IsWinnerHome:   isWinnerHome,
-			W:              winner,
-			L:              loser,
+			PostponeReason:   postponeReason,
+			Venue:            g.Venue,
+			IsWinnerHome:     isWinnerHome,
+			W:                winner,
+			L:                loser,
+			CondensedGameUrl: u,
 		}
 
 		pastGames = append(pastGames, p)
@@ -199,7 +174,7 @@ func (rg *ReportGenerator) analyzeFutureGames(today time.Time, dates []mlb.Date)
 		games := make([]FutureGame, 0)
 		for _, g := range gs {
 
-			isHome := g.Teams.Home.Team.Id == rg.MyTeam.Id
+			isHome := g.Teams.Home.Team.Id == rg.MyTeamId
 			var opponentTeam mlb.GameTeam
 			if isHome {
 				opponentTeam = g.Teams.Away
@@ -210,7 +185,7 @@ func (rg *ReportGenerator) analyzeFutureGames(today time.Time, dates []mlb.Date)
 			futureGame := FutureGame{
 				GameTimeLocal: g.GameDate.In(rg.Location).Format("15:04"),
 				IsMyTeamHome:  isHome,
-				AgainstAbbr:   rg.AllTeams[opponentTeam.Team.Id].Abbreviation,
+				AgainstAbbr:   rg.mc.AllTeams[opponentTeam.Team.Id].Abbreviation,
 			}
 
 			games = append(games, futureGame)
@@ -237,6 +212,8 @@ func (rg *ReportGenerator) generateHeadline(pastGames []PastGame, today time.Tim
 	// 5. team ties? guess so
 	// 6. Double header
 
+	myTeamName := rg.mc.AllTeams[rg.MyTeamId].Name
+
 	switch len(pastGames) {
 	case 0:
 		return fmt.Sprintf("Baseball report %s", today.Format("Monday 2006-01-02"))
@@ -246,26 +223,47 @@ func (rg *ReportGenerator) generateHeadline(pastGames []PastGame, today time.Tim
 		if g.PostponeReason != "" {
 			headline = fmt.Sprintf("Game was postponed due to %s", g.PostponeReason)
 		} else if g.W.Score == g.L.Score {
-			headline = fmt.Sprintf("The %s tie, %d to %d", rg.MyTeam.Name, g.W.Score, g.L.Score)
-		} else if g.W.Team.Id == rg.MyTeam.Id {
-			headline = fmt.Sprintf("The %s win! %d to %d", rg.MyTeam.Name, g.W.Score, g.L.Score)
+			headline = fmt.Sprintf("The %s tie, %d to %d", myTeamName, g.W.Score, g.L.Score)
+		} else if g.W.Team.Id == rg.MyTeamId {
+			headline = fmt.Sprintf("The %s win! %d to %d", myTeamName, g.W.Score, g.L.Score)
 		} else {
-			headline = fmt.Sprintf("The %s lose, %d to %d", rg.MyTeam.Name, g.L.Score, g.W.Score)
+			headline = fmt.Sprintf("The %s lose, %d to %d", myTeamName, g.L.Score, g.W.Score)
 		}
 		return headline
 	case 2:
 		var winCount int
 		var lossCount int
 		for _, g := range pastGames {
-			if g.W.Team.Id == rg.MyTeam.Id {
+			if g.W.Team.Id == rg.MyTeamId {
 				winCount += 1
 			} else {
 				lossCount += 1
 			}
 		}
-		return fmt.Sprintf("Doubleheader! The %s go %d - %d", rg.MyTeam.Name, winCount, lossCount)
+		return fmt.Sprintf("Doubleheader! The %s go %d - %d", myTeamName, winCount, lossCount)
 	default:
 		slog.Warn("Failed to generateHeadline, too many games played", slog.Int("pastGamesCount", len(pastGames)))
 		return "error"
 	}
+}
+
+// logs errors
+func (rg *ReportGenerator) fetchCondensedGame(gamePk int) (string, error) {
+
+	c, err := rg.mc.FetchContent(gamePk)
+	if err != nil {
+		return "", err
+	}
+
+	h, found := c.FindByTypeAndValue("mlbtax", "condensed_game")
+	if !found {
+		return "", errors.New("Failed to find condensed game")
+	}
+
+	p, found := h.FindPlaybackByName("highBit")
+	if !found {
+		return "", errors.New("Failed to find high bit rate condensed game")
+	}
+
+	return p.Url, nil
 }

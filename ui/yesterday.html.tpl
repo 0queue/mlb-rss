@@ -11,7 +11,7 @@
 {{ end }}
 {{ end }}
 {{ else }}
-<p>The {{ .MyTeam.Name }} did not play yesterday</p>
+<p>The {{ .MyTeamName }} did not play yesterday</p>
 {{ end }}
 
 <p>For more information go to <a href="{{ .BaseballTheater }}">BaseballTheater</a></p>

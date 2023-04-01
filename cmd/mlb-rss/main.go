@@ -45,18 +45,18 @@ func main() {
 	}
 	slog.SetDefault(slog.New(handler))
 
-	m, err := mlb.NewMlbClient()
+	mc, err := mlb.NewMlbClient()
 	if err != nil {
 		slog.Error(err.Error())
 		os.Exit(1)
 	}
 
-	myTeam, ok := m.FindTeam(c.MyTeam)
+	myTeam, ok := mc.FindTeam(c.MyTeam)
 	if !ok {
 		slog.Error("Failed to find team", slog.String("team", c.MyTeam))
 		os.Exit(1)
 	}
-	rg := report.NewReportGenerator(myTeam, m.AllTeams, time.Local)
+	rg := report.NewReportGenerator(myTeam.Id, mc, time.Local)
 
 	// seed cache
 	cache := cache.Cache[report.Report]{}
@@ -71,11 +71,18 @@ func main() {
 	_, _ = cron.Cron(c.Cron).StartImmediately().Do(func() {
 		now := time.Now()
 		slog.Info("Updating cache", slog.Time("now", now))
-		res, err := m.FetchSchedule(now.AddDate(0, 0, -1), now.AddDate(0, 0, 7), 0 /*TODO*/)
+		//res, err := mc.FetchSchedule(now.AddDate(0, 0, -1), now.AddDate(0, 0, 7), rg.MyTeamId)
+		//if err != nil {
+		//	slog.Error("Failed to fetch latest information", slog.String("err", err.Error()))
+		//}
+
+		r, err := rg.GenerateReport(now)
 		if err != nil {
-			slog.Error("Failed to fetch latest information", slog.String("err", err.Error()))
+			slog.Error("Failed to generate report", slog.String("err", err.Error()))
+			return
 		}
-		cache.Set(rg.GenerateReport(res, now))
+
+		cache.Set(r)
 	})
 
 	cron.StartAsync()

@@ -1,7 +1,7 @@
 alias b := build
 alias r := run
 
-v := "1.0.1"
+v := "1.1.0"
 
 build:
 	go build -o bin/mlb-rss cmd/mlb-rss/main.go

@@ -4,7 +4,7 @@ import "time"
 
 type Content struct {
 	Highlights struct {
-		Hightlights struct {
+		Highlights struct {
 			Items []Highlight
 		}
 	}

@@ -63,7 +63,7 @@ func (mc *MlbClient) FetchScheduleRaw(start, end time.Time, teamId int) ([]byte,
 
 	q := u.Query()
 	q.Set("sportId", "1")
-	q.Set("sportId", strconv.Itoa(teamId))
+	q.Set("teamId", strconv.Itoa(teamId))
 	q.Set("startDate", startDate)
 	q.Set("endDate", endDate)
 	u.RawQuery = q.Encode()
@@ -163,7 +163,7 @@ func (mc *MlbClient) FindTeam(q string) (Team, bool) {
 
 // search for typ=mlbtax and value=condensed_game
 func (c *Content) FindByTypeAndValue(typ, value string) (Highlight, bool) {
-	for _, h := range c.Highlights.Hightlights.Items {
+	for _, h := range c.Highlights.Highlights.Items {
 		h := h
 		for _, k := range h.KeywordsAll {
 			if k.Type == typ && k.Value == value {

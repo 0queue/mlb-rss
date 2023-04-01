@@ -135,6 +135,22 @@ func main() {
 		w.Header().Add("content-type", "application/rss+xml")
 		w.Write(bytes)
 	})
+	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+		cachedReport, ok := cache.Get()
+		if !ok {
+			w.WriteHeader(http.StatusNotFound)
+			return
+		}
+
+		rendered, err := rg.RenderWeb(cachedReport)
+		if err != nil {
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+
+		w.Header().Add("content-type", "text/html")
+		w.Write([]byte(rendered))
+	})
 
 	server := http.Server{
 		Addr:    c.Addr,

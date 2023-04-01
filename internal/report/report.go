@@ -40,11 +40,8 @@ func (rg *ReportGenerator) GenerateReport(today time.Time) (Report, error) {
 		return Report{}, nil
 	}
 
-	// so we get an array of stuff which has a date attached
-	// which means I should ignore time completely
-	dates := filterMyTeam(s.Dates, rg.MyTeamId)
-	pastGames := rg.analyzePastGames(dates[0], rg.MyTeamId)
-	futureGames := rg.analyzeFutureGames(today, dates[1:])
+	pastGames := rg.analyzePastGames(s.Dates, rg.MyTeamId, today)
+	futureGames := rg.analyzeFutureGames(today, s.Dates[1:])
 
 	baseballTheaterDate := today.AddDate(0, 0, -1).Format(BaseballTheaterTimeFormat)
 	link := fmt.Sprintf("https://baseball.theater/games/%s", baseballTheaterDate)
@@ -83,6 +80,29 @@ func (rg *ReportGenerator) Render(r Report) (string, error) {
 	return content.String(), nil
 }
 
+func (rg *ReportGenerator) RenderWeb(r Report) (string, error) {
+
+	body, err := rg.Render(r)
+	if err != nil {
+		return "", err
+	}
+
+	var content bytes.Buffer
+	err = rg.t.ExecuteTemplate(&content, "web.html.tpl", struct {
+		Title string
+		H2    string
+		Body  string
+	}{
+		Title: r.Headline,
+		H2:    r.Headline,
+	})
+	if err != nil {
+		return "", err
+	}
+
+	return content.String() + body + `</body></html`, nil
+}
+
 // keep games involving the team with the given id
 func filterMyTeam(dates []mlb.Date, id int) []mlb.Date {
 	newDates := make([]mlb.Date, 0)
@@ -103,7 +123,24 @@ func filterMyTeam(dates []mlb.Date, id int) []mlb.Date {
 	return newDates
 }
 
-func (rg *ReportGenerator) analyzePastGames(date mlb.Date, id int) []PastGame {
+func (rg *ReportGenerator) analyzePastGames(dates []mlb.Date, id int, today time.Time) []PastGame {
+
+	yesterdayDateFormatted := today.AddDate(0, 0, -1).Format(time.DateOnly)
+
+	var date mlb.Date
+	var found bool
+	for _, d := range dates {
+		d := d
+		if d.Date == yesterdayDateFormatted {
+			date = d
+			found = true
+		}
+	}
+
+	if !found {
+		slog.Info("No game played yesterday", slog.Time("yesterday", today.AddDate(0, 0, -1)))
+	}
+
 	pastGames := make([]PastGame, 0)
 
 	slog.Info("Analyzing yesterday's game", slog.String("date", date.Date))
@@ -216,7 +253,7 @@ func (rg *ReportGenerator) generateHeadline(pastGames []PastGame, today time.Tim
 
 	switch len(pastGames) {
 	case 0:
-		return fmt.Sprintf("Baseball report %s", today.Format("Monday 2006-01-02"))
+		return fmt.Sprintf("Baseball Report %s", today.Format("Monday 2006-01-02"))
 	case 1:
 		var headline string
 		g := pastGames[0]

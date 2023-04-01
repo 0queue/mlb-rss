@@ -15,7 +15,7 @@ func main() {
 
 	now := time.Now()
 
-	raw, err := m.FetchRaw(now, now)
+	raw, err := m.FetchScheduleRaw(now, now, 0 /*TODO*/)
 	if err != nil {
 		panic(err)
 	}

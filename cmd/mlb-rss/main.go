@@ -51,12 +51,12 @@ func main() {
 		os.Exit(1)
 	}
 
-	myTeam, ok := m.SearchTeams(c.MyTeam)
+	myTeam, ok := m.FindTeam(c.MyTeam)
 	if !ok {
 		slog.Error("Failed to find team", slog.String("team", c.MyTeam))
 		os.Exit(1)
 	}
-	rg := report.NewReportGenerator(myTeam, m.Teams, time.Local)
+	rg := report.NewReportGenerator(myTeam, m.AllTeams, time.Local)
 
 	// seed cache
 	cache := cache.Cache[report.Report]{}
@@ -71,7 +71,7 @@ func main() {
 	_, _ = cron.Cron(c.Cron).StartImmediately().Do(func() {
 		now := time.Now()
 		slog.Info("Updating cache", slog.Time("now", now))
-		res, err := m.Fetch(now.AddDate(0, 0, -1), now.AddDate(0, 0, 7))
+		res, err := m.FetchSchedule(now.AddDate(0, 0, -1), now.AddDate(0, 0, 7), 0 /*TODO*/)
 		if err != nil {
 			slog.Error("Failed to fetch latest information", slog.String("err", err.Error()))
 		}

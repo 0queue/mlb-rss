@@ -14,13 +14,13 @@ import (
 const BaseballTheaterTimeFormat = "20060102"
 
 type ReportGenerator struct {
-	MyTeam   mlb.TeamFull
-	AllTeams map[int]mlb.TeamFull
+	MyTeam   mlb.Team
+	AllTeams map[int]mlb.Team
 	Location *time.Location
 	t        *template.Template
 }
 
-func NewReportGenerator(myTeam mlb.TeamFull, allTeams map[int]mlb.TeamFull, loc *time.Location) ReportGenerator {
+func NewReportGenerator(myTeam mlb.Team, allTeams map[int]mlb.Team, loc *time.Location) ReportGenerator {
 	return ReportGenerator{
 		MyTeam:   myTeam,
 		AllTeams: allTeams,
@@ -34,8 +34,8 @@ type PastGame struct {
 	PostponeReason string
 	Venue          mlb.Venue
 	IsWinnerHome   bool
-	W              mlb.Team
-	L              mlb.Team
+	W              mlb.GameTeam
+	L              mlb.GameTeam
 }
 
 type FutureGame struct {
@@ -46,7 +46,7 @@ type FutureGame struct {
 }
 
 type Yesterday struct {
-	MyTeam          mlb.TeamFull
+	MyTeam          mlb.Team
 	PastGames       []PastGame
 	BaseballTheater string
 }
@@ -74,7 +74,7 @@ type Report struct {
 // Do analysis of the games and generate the report. NO TEMPLATES
 // assumes the first Date is yesterday, and the rest are the future
 // ultimately, analysis consists of filtering
-func (rg *ReportGenerator) GenerateReport(m mlb.Mlb, today time.Time) Report {
+func (rg *ReportGenerator) GenerateReport(m mlb.Schedule, today time.Time) Report {
 	// so we get an array of stuff which has a date attached
 	// which means I should ignore time completely
 	dates := filterMyTeam(m.Dates, rg.MyTeam.Id)
@@ -147,8 +147,8 @@ func analyzePastGames(date mlb.Date, id int) []PastGame {
 
 		// TODO doesn't really handle ties well
 		var isWinnerHome = g.Teams.Home.IsWinner
-		var winner mlb.Team
-		var loser mlb.Team
+		var winner mlb.GameTeam
+		var loser mlb.GameTeam
 
 		if isWinnerHome {
 			winner = g.Teams.Home
@@ -200,7 +200,7 @@ func (rg *ReportGenerator) analyzeFutureGames(today time.Time, dates []mlb.Date)
 		for _, g := range gs {
 
 			isHome := g.Teams.Home.Team.Id == rg.MyTeam.Id
-			var opponentTeam mlb.Team
+			var opponentTeam mlb.GameTeam
 			if isHome {
 				opponentTeam = g.Teams.Away
 			} else {

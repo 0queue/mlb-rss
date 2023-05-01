@@ -14,7 +14,7 @@ import (
 	"github.com/0queue/mlb-rss/internal/mlb"
 	"github.com/0queue/mlb-rss/internal/report"
 	"github.com/0queue/mlb-rss/internal/rss"
-	"github.com/caarlos0/env/v7"
+	"github.com/caarlos0/env/v8"
 	"github.com/go-co-op/gocron"
 	"golang.org/x/exp/slog"
 )
@@ -32,7 +32,7 @@ func main() {
 	opts := env.Options{
 		UseFieldNameByDefault: true,
 	}
-	if err := env.Parse(&c, opts); err != nil {
+	if err := env.ParseWithOptions(&c, opts); err != nil {
 		fmt.Printf("Failed to parse config: %s", err)
 		os.Exit(1)
 	}

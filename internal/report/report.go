@@ -106,7 +106,8 @@ func (rg *ReportGenerator) RenderWeb(r Report) (string, error) {
 		return "", err
 	}
 
-	return content.String() + body + `</body></html`, nil
+	// hack until I make a separate template for web...
+	return content.String() + body + `</body></html>`, nil
 }
 
 // keep games involving the team with the given id

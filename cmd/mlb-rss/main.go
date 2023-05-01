@@ -14,6 +14,7 @@ import (
 	"github.com/0queue/mlb-rss/internal/mlb"
 	"github.com/0queue/mlb-rss/internal/report"
 	"github.com/0queue/mlb-rss/internal/rss"
+	"github.com/0queue/mlb-rss/ui"
 	"github.com/caarlos0/env/v8"
 	"github.com/go-co-op/gocron"
 	"golang.org/x/exp/slog"
@@ -147,6 +148,10 @@ func main() {
 
 		w.Header().Add("content-type", "text/html")
 		w.Write([]byte(rendered))
+	})
+	mux.HandleFunc("/favicon-32x32.png", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("content-type", "image/png")
+		w.Write(ui.Favicon)
 	})
 
 	server := http.Server{

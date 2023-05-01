@@ -1,7 +1,7 @@
 alias b := build
 alias r := run
 
-v := "1.1.0"
+v := "1.2.0"
 
 build:
 	go build -o bin/mlb-rss cmd/mlb-rss/main.go
@@ -18,7 +18,7 @@ fetch-team-data:
 	curl 'https://statsapi.mlb.com/api/v1/teams?sportId=1' | jq -r > internal/mlb/teams.json
 
 build-container-image:
-	docker build -t ghcr.io/0queue/mlb-rss:{{v}} .
+	podman build -t ghcr.io/0queue/mlb-rss:{{v}} .
 
 push-container-image: build-container-image
-	docker push ghcr.io/0queue/mlb-rss:{{v}}
+	podman push ghcr.io/0queue/mlb-rss:{{v}}

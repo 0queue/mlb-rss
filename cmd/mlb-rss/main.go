@@ -114,6 +114,9 @@ func main() {
 						Description: &rss.Description{
 							Text: rendered,
 						},
+						// TODO investigate setting the Guid as prefix + hash(date + content)
+						//      to enable iteration on content, and seeing results immediately
+						//      after deploying and refreshing in miniflux
 						Guid:    "mlb-rss-" + cachedReport.When.Format(report.BaseballTheaterTimeFormat),
 						PubDate: cachedReport.When.Format(time.RFC822),
 					},

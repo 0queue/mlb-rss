@@ -41,7 +41,7 @@ func (rg *ReportGenerator) GenerateReport(today time.Time) (Report, error) {
 	}
 
 	pastGames := rg.analyzePastGames(s.Dates, rg.MyTeamId, today)
-	futureGames := rg.analyzeFutureGames(today, s.Dates[1:])
+	futureGames := rg.analyzeFutureGames(today, s.Dates)
 
 	baseballTheaterDate := today.AddDate(0, 0, -1).Format(BaseballTheaterTimeFormat)
 	link := fmt.Sprintf("https://baseball.theater/games/%s", baseballTheaterDate)
@@ -198,6 +198,8 @@ func (rg *ReportGenerator) analyzeFutureGames(today time.Time, dates []mlb.Date)
 		m[d.Date] = d
 	}
 
+	daysWithGames := 0
+
 	for i := 0; i < 8; i += 1 {
 		k := today.AddDate(0, 0, i).Format("2006-01-02")
 		d, ok := m[k]
@@ -205,6 +207,7 @@ func (rg *ReportGenerator) analyzeFutureGames(today time.Time, dates []mlb.Date)
 		if !ok {
 			gs = make([]mlb.Game, 0)
 		} else {
+			daysWithGames += 1
 			gs = d.Games
 		}
 
@@ -236,7 +239,7 @@ func (rg *ReportGenerator) analyzeFutureGames(today time.Time, dates []mlb.Date)
 		}
 	}
 
-	slog.Info("Upcoming games analyzed", slog.Int("daysWithGames", len(dates)))
+	slog.Info("Upcoming games analyzed", slog.Int("daysWithGames", daysWithGames))
 
 	return futureGames
 }

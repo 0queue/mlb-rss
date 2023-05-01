@@ -71,10 +71,6 @@ func main() {
 	_, _ = cron.Cron(c.Cron).StartImmediately().Do(func() {
 		now := time.Now()
 		slog.Info("Updating cache", slog.Time("now", now))
-		//res, err := mc.FetchSchedule(now.AddDate(0, 0, -1), now.AddDate(0, 0, 7), rg.MyTeamId)
-		//if err != nil {
-		//	slog.Error("Failed to fetch latest information", slog.String("err", err.Error()))
-		//}
 
 		r, err := rg.GenerateReport(now)
 		if err != nil {

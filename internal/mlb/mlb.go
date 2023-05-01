@@ -10,6 +10,8 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	"golang.org/x/exp/slog"
 )
 
 var apiEndpoint = "https://statsapi.mlb.com/api/v1"
@@ -67,6 +69,8 @@ func (mc *MlbClient) FetchScheduleRaw(start, end time.Time, teamId int) ([]byte,
 	q.Set("startDate", startDate)
 	q.Set("endDate", endDate)
 	u.RawQuery = q.Encode()
+
+	slog.Info("Fetching raw schedule", slog.String("url", u.String()))
 
 	resp, err := mc.client.Get(u.String())
 	if err != nil {

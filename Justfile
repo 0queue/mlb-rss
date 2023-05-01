@@ -1,7 +1,9 @@
 alias b := build
 alias r := run
 
-v := "1.2.0"
+v := "1.2.1"
+
+export KO_DOCKER_REPO := "ghcr.io/0queue/mlb-rss"
 
 build:
 	go build -o bin/mlb-rss cmd/mlb-rss/main.go
@@ -17,8 +19,8 @@ serve-test-data:
 fetch-team-data:
 	curl 'https://statsapi.mlb.com/api/v1/teams?sportId=1' | jq -r > internal/mlb/teams.json
 
-build-container-image:
-	podman build -t ghcr.io/0queue/mlb-rss:{{v}} .
+ko:
+	ko build --bare --tags={{v}} ./cmd/mlb-rss
 
-push-container-image: build-container-image
-	podman push ghcr.io/0queue/mlb-rss:{{v}}
+install-ko:
+	go install github.com/google/ko@latest

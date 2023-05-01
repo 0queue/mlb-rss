@@ -18,14 +18,17 @@ An example API response from
 just build
 ```
 
+## Publsih
+
 ```
-just build-container-image
+just ko 
 ```
 
 ## Usage
 
 
-Service runs by default on port 8080 serving the /rss.xml path
+Service runs by default on port 8080 serving the /rss.xml path. When using the container image,
+make sure to set `JSON_LOG=true`
 
 ```
 just r

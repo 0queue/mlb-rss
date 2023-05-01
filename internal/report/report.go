@@ -22,11 +22,17 @@ type ReportGenerator struct {
 }
 
 func NewReportGenerator(myTeamId int, mc *mlb.MlbClient, loc *time.Location) ReportGenerator {
+	funcs := template.FuncMap{
+		"inc": func(i int) int {
+			return i + 1
+		},
+	}
+
 	return ReportGenerator{
 		MyTeamId: myTeamId,
 		mc:       mc,
 		Location: loc,
-		t:        template.Must(template.ParseFS(ui.ReportTemplates, "*.html.tpl")),
+		t:        template.Must(template.New("").Funcs(funcs).ParseFS(ui.ReportTemplates, "*.html.tpl")),
 	}
 }
 
@@ -174,6 +180,20 @@ func (rg *ReportGenerator) analyzePastGames(dates []mlb.Date, id int, today time
 			)
 		}
 
+		l, err := rg.fetchLinescore(
+			g.GamePk,
+			g.Teams.Home.Team.Id,
+			g.Teams.Away.Team.Id,
+		)
+		hasLinescore := err == nil
+		if err != nil {
+			slog.Warn(
+				"Failed to fetch linescore",
+				slog.Int("gamePk", g.GamePk),
+				slog.String("err", err.Error()),
+			)
+		}
+
 		p := PastGame{
 			PostponeReason:   postponeReason,
 			Venue:            g.Venue,
@@ -181,6 +201,8 @@ func (rg *ReportGenerator) analyzePastGames(dates []mlb.Date, id int, today time
 			W:                winner,
 			L:                loser,
 			CondensedGameUrl: u,
+			HasLinescore:     hasLinescore,
+			Linescore:        l,
 		}
 
 		pastGames = append(pastGames, p)
@@ -306,4 +328,43 @@ func (rg *ReportGenerator) fetchCondensedGame(gamePk int) (string, error) {
 	}
 
 	return p.Url, nil
+}
+
+func (rg *ReportGenerator) fetchLinescore(gamePk, homeId, awayId int) (Linescore, error) {
+
+	l, err := rg.mc.FetchLinescore(gamePk)
+	if err != nil {
+		return Linescore{}, err
+	}
+
+	homeLinescore := LinescoreTeam{
+		Abbr:    rg.mc.AllTeams[homeId].Abbreviation,
+		Innings: []int{},
+		Runs:    l.Teams.Home.Runs,
+		Hits:    l.Teams.Home.Hits,
+		Errors:  l.Teams.Home.Errors,
+	}
+
+	awayLinescore := LinescoreTeam{
+		Abbr:    rg.mc.AllTeams[awayId].Abbreviation,
+		Innings: []int{},
+		Runs:    l.Teams.Away.Runs,
+		Hits:    l.Teams.Away.Hits,
+		Errors:  l.Teams.Away.Errors,
+	}
+
+	for _, i := range l.Innings {
+		homeLinescore.Innings = append(homeLinescore.Innings, i.Home.Runs)
+		awayLinescore.Innings = append(awayLinescore.Innings, i.Away.Runs)
+	}
+
+	if l.IsTopInning {
+		// negative numbers are rendered as x
+		homeLinescore.Innings[len(homeLinescore.Innings)-1] = -1
+	}
+
+	return Linescore{
+		Home: homeLinescore,
+		Away: awayLinescore,
+	}, nil
 }

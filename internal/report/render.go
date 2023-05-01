@@ -14,6 +14,21 @@ type PastGame struct {
 	W                mlb.GameTeam
 	L                mlb.GameTeam
 	CondensedGameUrl string
+	HasLinescore     bool
+	Linescore        Linescore
+}
+
+type Linescore struct {
+	Home LinescoreTeam
+	Away LinescoreTeam
+}
+
+type LinescoreTeam struct {
+	Abbr    string
+	Innings []int
+	Runs    int
+	Hits    int
+	Errors  int
 }
 
 type FutureGame struct {

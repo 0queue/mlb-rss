@@ -108,6 +108,30 @@ func (mc *MlbClient) FetchContentRaw(gamePk int) ([]byte, error) {
 	return body, nil
 }
 
+func (mc *MlbClient) FetchLinescoreRaw(gamePk int) ([]byte, error) {
+	u, err := url.Parse(apiEndpoint)
+	if err != nil {
+		return nil, err
+	}
+
+	u.Path = path.Join(u.Path, "game", strconv.Itoa(gamePk), "linescore")
+
+	slog.Info("Fetching raw linescore", slog.String("url", u.String()))
+
+	resp, err := mc.client.Get(u.String())
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, err
+	}
+
+	return body, nil
+}
+
 func (mc *MlbClient) FetchContent(gamePk int) (Content, error) {
 	raw, err := mc.FetchContentRaw(gamePk)
 	if err != nil {
@@ -136,6 +160,21 @@ func (mc *MlbClient) FetchSchedule(start, end time.Time, teamId int) (Schedule, 
 	}
 
 	return s, nil
+}
+
+func (mc *MlbClient) FetchLinescore(gamePk int) (Linescore, error) {
+	raw, err := mc.FetchLinescoreRaw(gamePk)
+	if err != nil {
+		return Linescore{}, err
+	}
+
+	var l Linescore
+	err = json.Unmarshal(raw, &l)
+	if err != nil {
+		return Linescore{}, err
+	}
+
+	return l, nil
 }
 
 // TODO find out where I got the data, and make a function to download it

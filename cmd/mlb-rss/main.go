@@ -140,6 +140,7 @@ func main() {
 
 		rendered, err := rg.RenderWeb(cachedReport)
 		if err != nil {
+			slog.Error("Failed to render web", slog.String("err", err.Error()))
 			w.WriteHeader(http.StatusInternalServerError)
 			return
 		}

@@ -26,6 +26,7 @@ beat the {{ .L.Team.Name }} ({{ .L.LeagueRecord.Wins }} - {{ .L.LeagueRecord.Los
 </table>
 
 {{ end }}
+{{ if and .HasLinescore .CondensedGameUrl }}<br>{{ end }}
 {{ if .CondensedGameUrl }}
 <video controls width="650">
 	<source src="{{ .CondensedGameUrl }}">

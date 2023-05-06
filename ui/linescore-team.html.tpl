@@ -10,7 +10,7 @@
 {{ end }}
 {{ end }}
 
-<td><b>{{ .Runs }}</b></td>
+<td><strong>{{ .Runs }}</strong></td>
 <td>{{ .Hits }}</td>
 <td>{{ .Errors }}</td>
 

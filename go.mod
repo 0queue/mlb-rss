@@ -4,8 +4,8 @@ go 1.18
 
 require (
 	github.com/caarlos0/env/v8 v8.0.0
-	github.com/go-co-op/gocron v1.19.0
-	golang.org/x/exp v0.0.0-20230315142452-642cacee5cc0
+	github.com/go-co-op/gocron v1.25.0
+	golang.org/x/exp v0.0.0-20230425010034-47ecfdc1ba53
 )
 
 require (

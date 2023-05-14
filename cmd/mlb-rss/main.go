@@ -40,9 +40,9 @@ func main() {
 
 	var handler slog.Handler
 	if c.JsonLog {
-		handler = slog.NewJSONHandler(os.Stdout)
+		handler = slog.NewJSONHandler(os.Stdout, nil)
 	} else {
-		handler = slog.NewTextHandler(os.Stdout)
+		handler = slog.NewTextHandler(os.Stdout, nil)
 	}
 	slog.SetDefault(slog.New(handler))
 

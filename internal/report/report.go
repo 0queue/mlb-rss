@@ -79,7 +79,13 @@ func (rg *ReportGenerator) GenerateReport(today time.Time) (Report, error) {
 // Render uses templates to render reports to html
 func (rg *ReportGenerator) Render(r Report) (string, error) {
 	var content bytes.Buffer
-	err := rg.t.ExecuteTemplate(&content, "report.html.tpl", r)
+	err := rg.t.ExecuteTemplate(&content, "report.html.tpl", struct {
+		Yesterday Yesterday
+		Upcoming  Upcoming
+	}{
+		Yesterday: r.Yesterday,
+		Upcoming:  r.Upcoming,
+	})
 	if err != nil {
 		return "", err
 	}
@@ -87,27 +93,23 @@ func (rg *ReportGenerator) Render(r Report) (string, error) {
 }
 
 func (rg *ReportGenerator) RenderWeb(r Report) (string, error) {
-
-	body, err := rg.Render(r)
-	if err != nil {
-		return "", err
-	}
-
 	var content bytes.Buffer
-	err = rg.t.ExecuteTemplate(&content, "web.html.tpl", struct {
-		Title string
-		H2    string
-		Body  string
+	err := rg.t.ExecuteTemplate(&content, "web.html.tpl", struct {
+		Title     string
+		H2        string
+		Yesterday Yesterday
+		Upcoming  Upcoming
 	}{
-		Title: r.Headline,
-		H2:    r.Headline,
+		Title:     r.Headline,
+		H2:        r.Headline,
+		Yesterday: r.Yesterday,
+		Upcoming:  r.Upcoming,
 	})
 	if err != nil {
 		return "", err
 	}
 
-	// hack until I make a separate template for web...
-	return content.String() + body + `</body></html>`, nil
+	return content.String(), nil
 }
 
 // keep games involving the team with the given id

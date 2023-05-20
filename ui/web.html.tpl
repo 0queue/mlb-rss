@@ -7,4 +7,7 @@
 </head>
 <body>
 <h2>{{ .H2 }}</h2>
-<!-- closing tags added manually to avoid escaping. sorry -->
+{{ template "yesterday" .Yesterday }}
+{{ template "upcoming" .Upcoming }}
+</body>
+</html>

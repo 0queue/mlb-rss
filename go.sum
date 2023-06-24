@@ -10,6 +10,8 @@ github.com/go-co-op/gocron v1.28.0 h1:7TeuQggXS2xq1x76+50sRt5TxT3Tj+aKn0hkah2vpy
 github.com/go-co-op/gocron v1.28.0/go.mod h1:39f6KNSGVOU1LO/ZOoZfcSxwlsJDQOKSu8erN0SH48Y=
 github.com/go-co-op/gocron v1.28.2 h1:H9oHUGH+9HZ5mAorbnzRjzXLf4poP+ctZdbtaKRYagc=
 github.com/go-co-op/gocron v1.28.2/go.mod h1:39f6KNSGVOU1LO/ZOoZfcSxwlsJDQOKSu8erN0SH48Y=
+github.com/go-co-op/gocron v1.29.0 h1:HHKBSnCqurMw8eENEcBIDGwoU1TY7wkH1CKzf1Rm/3M=
+github.com/go-co-op/gocron v1.29.0/go.mod h1:39f6KNSGVOU1LO/ZOoZfcSxwlsJDQOKSu8erN0SH48Y=
 github.com/kr/pretty v0.1.0/go.mod h1:dAy3ld7l9f0ibDNOQOHHMYYIIbhfbHSm3C4ZsoJORNo=
 github.com/kr/pretty v0.2.1/go.mod h1:ipq/a2n7PKx3OHsz4KJII5eveXtPO4qwEXGdVfWzfnI=
 github.com/kr/pretty v0.3.0/go.mod h1:640gp4NfQd8pI5XOwp5fnNeVWj67G7CFk/SaSQn7NBk=

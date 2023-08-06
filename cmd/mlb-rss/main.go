@@ -15,7 +15,7 @@ import (
 	"github.com/0queue/mlb-rss/internal/report"
 	"github.com/0queue/mlb-rss/internal/rss"
 	"github.com/0queue/mlb-rss/ui"
-	"github.com/caarlos0/env/v8"
+	"github.com/caarlos0/env/v9"
 	"github.com/go-co-op/gocron"
 	"golang.org/x/exp/slog"
 )

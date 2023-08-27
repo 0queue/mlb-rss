@@ -10,6 +10,10 @@ github.com/go-co-op/gocron v1.31.0 h1:8VaWk7ARDpsVYFP8SmjvHrBZQkcPQ7HyAzF7acG57y
 github.com/go-co-op/gocron v1.31.0/go.mod h1:39f6KNSGVOU1LO/ZOoZfcSxwlsJDQOKSu8erN0SH48Y=
 github.com/go-co-op/gocron v1.31.2 h1:tAUW64bxYc5QlzEy2t30TnHX2+uInNDajKXxWi4SACA=
 github.com/go-co-op/gocron v1.31.2/go.mod h1:39f6KNSGVOU1LO/ZOoZfcSxwlsJDQOKSu8erN0SH48Y=
+github.com/go-co-op/gocron v1.32.1 h1:h+StA6Qzlv+ImlCaLfA26rLN9eS/l4sO7oWmPUbRVIY=
+github.com/go-co-op/gocron v1.32.1/go.mod h1:UGz2oYvVS6PsqlwuOdo5L1Djsg/cQjxJ6T5ntkhp9Bg=
+github.com/google/uuid v1.3.0 h1:t6JiXgmwXMjEs8VusXIJk2BXHsn+wx8BZdTaoZ5fu7I=
+github.com/google/uuid v1.3.0/go.mod h1:TIyPZe4MgqvfeYDBFedMoGGpEw/LqOeaOT+nhxU+yHo=
 github.com/kr/pretty v0.1.0/go.mod h1:dAy3ld7l9f0ibDNOQOHHMYYIIbhfbHSm3C4ZsoJORNo=
 github.com/kr/pretty v0.2.1/go.mod h1:ipq/a2n7PKx3OHsz4KJII5eveXtPO4qwEXGdVfWzfnI=
 github.com/kr/pretty v0.3.0/go.mod h1:640gp4NfQd8pI5XOwp5fnNeVWj67G7CFk/SaSQn7NBk=

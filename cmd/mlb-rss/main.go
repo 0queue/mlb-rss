@@ -3,11 +3,11 @@ package main
 import (
 	"context"
 	"encoding/xml"
-	"fmt"
 	"log/slog"
 	"net/http"
 	"os"
 	"os/signal"
+	"strings"
 	"syscall"
 	"time"
 
@@ -16,27 +16,45 @@ import (
 	"github.com/0queue/mlb-rss/internal/report"
 	"github.com/0queue/mlb-rss/internal/rss"
 	"github.com/0queue/mlb-rss/ui"
-	"github.com/caarlos0/env/v9"
 	"github.com/go-co-op/gocron"
 )
 
 type config struct {
-	JsonLog bool   `envDefault:"false"`
-	Addr    string `envDefault:":8080"`
-	Cron    string `envDefault:"0 7 * * *"`
-	MyTeam  string `envDefault:"BAL"`
+	JsonLog bool
+	Addr    string
+	Cron    string
+	MyTeam  string
+}
+
+func readConfigFromEnv() config {
+	jsonLog := strings.ToLower(os.Getenv("JSON_LOG")) == "true"
+
+	addr := os.Getenv("ADDR")
+	if addr == "" {
+		addr = ":8080"
+	}
+
+	cron := os.Getenv("CRON")
+	if cron == "" {
+		cron = "0 7 * * *"
+	}
+
+	myTeam := os.Getenv("MY_TEAM")
+	if myTeam == "" {
+		myTeam = "BAL"
+	}
+
+	return config{
+		JsonLog: jsonLog,
+		Addr:    addr,
+		Cron:    cron,
+		MyTeam:  myTeam,
+	}
 }
 
 func main() {
 	// read config
-	var c config
-	opts := env.Options{
-		UseFieldNameByDefault: true,
-	}
-	if err := env.ParseWithOptions(&c, opts); err != nil {
-		fmt.Printf("Failed to parse config: %s", err)
-		os.Exit(1)
-	}
+	c := readConfigFromEnv()
 
 	var handler slog.Handler
 	if c.JsonLog {

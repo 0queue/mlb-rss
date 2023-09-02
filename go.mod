@@ -2,10 +2,7 @@ module github.com/0queue/mlb-rss
 
 go 1.18
 
-require (
-	github.com/caarlos0/env/v9 v9.0.0
-	github.com/go-co-op/gocron v1.33.1
-)
+require github.com/go-co-op/gocron v1.33.1
 
 require (
 	github.com/google/uuid v1.3.1 // indirect

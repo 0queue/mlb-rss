@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"strconv"
 	"strings"
 	"syscall"
 	"time"
@@ -15,15 +16,15 @@ import (
 	"github.com/0queue/mlb-rss/internal/mlb"
 	"github.com/0queue/mlb-rss/internal/report"
 	"github.com/0queue/mlb-rss/internal/rss"
+	"github.com/0queue/mlb-rss/internal/tinycron"
 	"github.com/0queue/mlb-rss/ui"
-	"github.com/go-co-op/gocron"
 )
 
 type config struct {
-	JsonLog bool
-	Addr    string
-	Cron    string
-	MyTeam  string
+	JsonLog     bool
+	Addr        string
+	CheckAtHour int
+	MyTeam      string
 }
 
 func readConfigFromEnv() config {
@@ -34,9 +35,16 @@ func readConfigFromEnv() config {
 		addr = ":8080"
 	}
 
-	cron := os.Getenv("CRON")
-	if cron == "" {
-		cron = "0 7 * * *"
+	checkAtHourRaw := os.Getenv("CHECK_AT_HOUR")
+	if checkAtHourRaw == "" {
+		checkAtHourRaw = "7"
+	}
+	checkAtHour, err := strconv.Atoi(checkAtHourRaw)
+	if err != nil {
+		checkAtHour = 7
+	}
+	if checkAtHour < 0 || checkAtHour > 23 {
+		checkAtHour = 7
 	}
 
 	myTeam := os.Getenv("MY_TEAM")
@@ -45,10 +53,10 @@ func readConfigFromEnv() config {
 	}
 
 	return config{
-		JsonLog: jsonLog,
-		Addr:    addr,
-		Cron:    cron,
-		MyTeam:  myTeam,
+		JsonLog:     jsonLog,
+		Addr:        addr,
+		CheckAtHour: checkAtHour,
+		MyTeam:      myTeam,
 	}
 }
 
@@ -63,6 +71,8 @@ func main() {
 		handler = slog.NewTextHandler(os.Stdout, nil)
 	}
 	slog.SetDefault(slog.New(handler))
+
+	slog.Info("configuration successful", slog.Int("CHECK_AT_HOUR", c.CheckAtHour))
 
 	mc, err := mlb.NewMlbClient()
 	if err != nil {
@@ -86,8 +96,7 @@ func main() {
 	defer signalCancel()
 
 	// start refresh cron job
-	cron := gocron.NewScheduler(time.Local)
-	_, _ = cron.Cron(c.Cron).StartImmediately().Do(func() {
+	tinycron.EveryDay(signalCtx, c.CheckAtHour, func() {
 		now := time.Now()
 		slog.Info("Updating cache", slog.Time("now", now))
 
@@ -99,8 +108,6 @@ func main() {
 
 		cache.Set(r)
 	})
-
-	cron.StartAsync()
 
 	// serve xml
 	mux := http.NewServeMux()
@@ -194,7 +201,6 @@ func main() {
 	timeout, timeoutCancel := context.WithTimeout(context.Background(), 3*time.Second)
 	defer timeoutCancel()
 
-	cron.Stop()
 	server.Shutdown(timeout)
 
 	slog.Info("Shutdown finished")

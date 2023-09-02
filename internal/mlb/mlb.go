@@ -4,14 +4,13 @@ import (
 	_ "embed"
 	"encoding/json"
 	"io"
+	"log/slog"
 	"net/http"
 	"net/url"
 	"path"
 	"strconv"
 	"strings"
 	"time"
-
-	"golang.org/x/exp/slog"
 )
 
 var apiEndpoint = "https://statsapi.mlb.com/api/v1"

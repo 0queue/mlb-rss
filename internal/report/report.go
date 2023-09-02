@@ -5,11 +5,11 @@ import (
 	"errors"
 	"fmt"
 	"html/template"
+	"log/slog"
 	"time"
 
 	"github.com/0queue/mlb-rss/internal/mlb"
 	"github.com/0queue/mlb-rss/ui"
-	"golang.org/x/exp/slog"
 )
 
 const BaseballTheaterTimeFormat = "20060102"

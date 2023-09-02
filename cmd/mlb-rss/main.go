@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/xml"
 	"fmt"
+	"log/slog"
 	"net/http"
 	"os"
 	"os/signal"
@@ -17,7 +18,6 @@ import (
 	"github.com/0queue/mlb-rss/ui"
 	"github.com/caarlos0/env/v9"
 	"github.com/go-co-op/gocron"
-	"golang.org/x/exp/slog"
 )
 
 type config struct {

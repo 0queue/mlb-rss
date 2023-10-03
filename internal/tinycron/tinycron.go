@@ -14,7 +14,11 @@ func EveryDay(ctx context.Context, hour int, f func()) {
 			f()
 
 			now := time.Now()
+
+			// overwrite now with the given hour
 			t := time.Date(now.Year(), now.Month(), now.Day(), hour, now.Minute(), now.Second(), now.Nanosecond(), now.Location())
+
+			// if it was in the past, add a day
 			if t.Before(now) {
 				t = t.AddDate(0, 0, 1)
 			}

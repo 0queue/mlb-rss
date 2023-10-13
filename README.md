@@ -18,7 +18,7 @@ An example API response from
 just build
 ```
 
-## Publsih
+## Publish
 
 ```
 just ko 

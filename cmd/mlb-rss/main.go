@@ -25,6 +25,7 @@ type config struct {
 	Addr        string
 	CheckAtHour int
 	MyTeam      string
+	Offseason   bool
 }
 
 func readConfigFromEnv() config {
@@ -52,11 +53,14 @@ func readConfigFromEnv() config {
 		myTeam = "BAL"
 	}
 
+	offseason := strings.ToLower(os.Getenv("OFFSEASON")) == "true"
+
 	return config{
 		JsonLog:     jsonLog,
 		Addr:        addr,
 		CheckAtHour: checkAtHour,
 		MyTeam:      myTeam,
+		Offseason:   offseason,
 	}
 }
 
@@ -97,6 +101,11 @@ func main() {
 
 	// start refresh cron job
 	tinycron.EveryDay(signalCtx, c.CheckAtHour, func() {
+		if c.Offseason {
+			slog.Info("No more baseball, go to sleep!")
+			return
+		}
+
 		now := time.Now()
 		slog.Info("Updating cache", slog.Time("now", now))
 

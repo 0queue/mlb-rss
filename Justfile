@@ -1,7 +1,7 @@
 alias b := build
 alias r := run
 
-v := "1.3.0"
+v := "1.3.1"
 
 export KO_DOCKER_REPO := "ghcr.io/0queue/mlb-rss"
 

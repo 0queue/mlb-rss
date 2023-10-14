@@ -121,18 +121,29 @@ func main() {
 	// serve xml
 	mux := http.NewServeMux()
 	mux.HandleFunc("/rss.xml", func(w http.ResponseWriter, r *http.Request) {
-		cachedReport, ok := cache.Get()
-		if !ok {
-			slog.Warn("Cache not populated yet")
-			w.WriteHeader(http.StatusNotFound)
-			return
-		}
+		var items []rss.Item
 
-		rendered, err := rg.Render(cachedReport)
-		if err != nil {
-			slog.Error("Failed to render report", slog.String("err", err.Error()))
-			w.WriteHeader(http.StatusInternalServerError)
-			return
+		cachedReport, ok := cache.Get()
+		if ok {
+			rendered, err := rg.Render(cachedReport)
+			if err != nil {
+				slog.Error("Failed to render report", slog.String("err", err.Error()))
+				w.WriteHeader(http.StatusInternalServerError)
+				return
+			}
+
+			items = append(items, rss.Item{
+				Title: cachedReport.Headline,
+				Link:  cachedReport.Link,
+				Description: &rss.Description{
+					Text: rendered,
+				},
+				// TODO investigate setting the Guid as prefix + hash(date + content)
+				//      to enable iteration on content, and seeing results immediately
+				//      after deploying and refreshing in miniflux
+				Guid:    "mlb-rss-" + cachedReport.When.Format(report.BaseballTheaterTimeFormat),
+				PubDate: cachedReport.When.Format(time.RFC822),
+			})
 		}
 
 		feed := rss.Rss{
@@ -141,20 +152,7 @@ func main() {
 				Title:       "MLB RSS",
 				Link:        "https://baseball.theater",
 				Description: "Feed generated from statsapi.mlb.com",
-				Items: []rss.Item{
-					{
-						Title: cachedReport.Headline,
-						Link:  cachedReport.Link,
-						Description: &rss.Description{
-							Text: rendered,
-						},
-						// TODO investigate setting the Guid as prefix + hash(date + content)
-						//      to enable iteration on content, and seeing results immediately
-						//      after deploying and refreshing in miniflux
-						Guid:    "mlb-rss-" + cachedReport.When.Format(report.BaseballTheaterTimeFormat),
-						PubDate: cachedReport.When.Format(time.RFC822),
-					},
-				},
+				Items:       items,
 			},
 		}
 
@@ -170,6 +168,11 @@ func main() {
 		w.Write(bytes)
 	})
 	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+		if c.Offseason {
+			w.Write([]byte("Offseason! 💤"))
+			return
+		}
+
 		cachedReport, ok := cache.Get()
 		if !ok {
 			w.WriteHeader(http.StatusNotFound)

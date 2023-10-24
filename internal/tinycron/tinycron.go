@@ -19,7 +19,7 @@ func EveryDay(ctx context.Context, hour int, f func()) {
 			t := time.Date(now.Year(), now.Month(), now.Day(), hour, now.Minute(), now.Second(), now.Nanosecond(), now.Location())
 
 			// if it was in the past, add a day
-			if t.Before(now) {
+			if !t.After(now) {
 				t = t.AddDate(0, 0, 1)
 			}
 

@@ -3,6 +3,7 @@ package mlb
 import (
 	_ "embed"
 	"encoding/json"
+	"fmt"
 	"io"
 	"log/slog"
 	"net/http"
@@ -71,7 +72,14 @@ func (mc *MlbClient) FetchScheduleRaw(start, end time.Time, teamId int) ([]byte,
 
 	slog.Info("Fetching raw schedule", slog.String("url", u.String()))
 
-	resp, err := mc.client.Get(u.String())
+	req, err := http.NewRequest(http.MethodGet, u.String(), nil)
+	if err != nil {
+		return nil, fmt.Errorf("new request: %w", err)
+	}
+
+	req.Header.Set("User-Agent", "Mozilla/5.0 (X11; Linux x86_64; rv:152.0) Gecko/20100101 Firefox/152.0")
+
+	resp, err := mc.client.Do(req)
 	if err != nil {
 		return nil, err
 	}
@@ -80,6 +88,10 @@ func (mc *MlbClient) FetchScheduleRaw(start, end time.Time, teamId int) ([]byte,
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return nil, err
+	}
+
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("status %d, body %s", resp.StatusCode, string(body))
 	}
 
 	return body, nil
